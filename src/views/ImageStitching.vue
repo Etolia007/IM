@@ -6,9 +6,7 @@ import { StitchingType } from "../data/StitchingType.ts";
 import ImageView from "./ImageView.vue";
 import CheckList from './ImageView.vue'
 import { Star, CloseBold, Picture } from "@element-plus/icons-vue";
-// import type { UploadProps, UploadUserFile } from 'element-plus'
 import draggable from 'vuedraggable';
-
 
 interface ListItem {
     value: string
@@ -18,7 +16,6 @@ interface ListItem {
 const list = ref<ListItem[]>([])
 const options = ref<ListItem[]>([])
 const value = ref<string[]>([])
-// const loading = ref(false)
 
 onMounted(() => {
     list.value = ImageType.map((item) => {
@@ -76,7 +73,6 @@ const getImageName = (id: number) => {
     return image?.name || '未知'
 }
 
-
 const clickDelete = (element: number) => {
     if (!List.value || !List.value.checkList) return;
 
@@ -97,10 +93,7 @@ const clickDelete = (element: number) => {
 }
 
 const stitchingValue = ref(StitchingType[0]?.name)
-// const stitchingNum = ref(StitchingType[0]?.num)
 const stitchingList = ref<typeof StitchingType[0][]>([])
-
-// const stitchingNum = ref(6)
 
 onMounted(() => {
     stitchingList.value = [...StitchingType]
