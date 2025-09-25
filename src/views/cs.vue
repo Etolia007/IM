@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { ImageName } from "../data/ImageType";
+import { ImageType } from "../data/ImageType";
 
 interface ListItem {
     value: string
@@ -13,7 +13,7 @@ const value = ref<string[]>([])
 const loading = ref(false)
 
 onMounted(() => {
-    list.value = ImageName.map((item) => {
+    list.value = ImageType.map((item) => {
         return { value: `value:${item}`, label: `${item}` }
     })
     options.value = list.value
