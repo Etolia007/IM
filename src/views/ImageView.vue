@@ -9,8 +9,6 @@ interface Props {
 // const props = 
 defineProps<Props>()
 
-
-
 const checkList = ref<any[]>([]) // 存储选中的图片对象
 
 defineExpose({
