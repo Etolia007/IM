@@ -5,7 +5,7 @@ import { ImageInfo } from "../data/ImageInfo";
 import { StitchingType } from "../data/StitchingType.ts";
 import ImageView from "./ImageView.vue";
 import CheckList from './ImageView.vue'
-import { Star, CloseBold, Picture } from "@element-plus/icons-vue";
+import { Star, CloseBold } from "@element-plus/icons-vue";
 import draggable from 'vuedraggable';
 
 interface ListItem {
@@ -115,96 +115,63 @@ const draw = async () => {
     if (!ctx) return;
 
     try {
+        const dpr = window.devicePixelRatio || 1;
+
         // 获取选中的图片ID列表
         const selectedImageIds = List?.value?.checkList || [];
-
-        // 根据拖拽排序后的ID顺序获取图片数据
         const selectedImages = [];
         for (const id of selectedImageIds) {
             const image = ImageInfo.value.find(item => item.id === id);
-            if (image) {
-                selectedImages.push(image);
-            }
+            if (image) selectedImages.push(image);
         }
 
-        // 提取图片URL
         const imageUrls = selectedImages.map(item => item.url);
-
         const images = await Promise.all(imageUrls.map(src => loadImage(src)));
 
-        // 获取用户选择的每行图片数量
-        const imagesPerRow = getImagesPerRow();
-
+        const imagesPerRow = getImagesPerRow(); // 假设这个函数返回每行图片数量
         const totalImages = images.length;
+        if (totalImages === 0) return;
 
-        // 如果没有选择任何图片，直接返回
-        if (totalImages === 0) {
-            console.log('没有选择任何图片');
-            return;
-        }
-
-        // 动态计算单元格尺寸
-        const cellWidth = Math.floor(canvas.width / imagesPerRow);
-
-        // 计算总高度
-        let totalUsedHeight = 0;
-
-        // 先计算总高度（不实际绘制）
+        // 计算画布宽度：取每行图片原始宽度之和的最大值
+        let canvasWidth = 0;
         for (let i = 0; i < totalImages; i += imagesPerRow) {
             const rowImages = images.slice(i, i + imagesPerRow);
-
-            let maxHeightRatio = 0;
-            for (const img of rowImages) {
-                const ratio = img.height / img.width;
-                if (ratio > maxHeightRatio) {
-                    maxHeightRatio = ratio;
-                }
-            }
-
-            const rowHeight = Math.floor(cellWidth * maxHeightRatio);
-            totalUsedHeight += rowHeight;
+            const rowWidth = rowImages.reduce((sum, img) => sum + img.naturalWidth, 0);
+            if (rowWidth > canvasWidth) canvasWidth = rowWidth;
         }
 
-        // 设置canvas高度为计算出的总高度
-        canvas.height = totalUsedHeight;
+        // 计算画布总高度：每行高度为该行中图片的最大高度
+        let totalHeight = 0;
+        for (let i = 0; i < totalImages; i += imagesPerRow) {
+            const rowImages = images.slice(i, i + imagesPerRow);
+            const rowHeight = Math.max(...rowImages.map(img => img.naturalHeight));
+            totalHeight += rowHeight;
+        }
 
-        // 使用黑色背景填充整个画布
+        // 设置画布尺寸
+        canvas.style.width = canvasWidth + 'px';
+        canvas.style.height = totalHeight + 'px';
+        canvas.width = canvasWidth * dpr;
+        canvas.height = totalHeight * dpr;
+        ctx.scale(dpr, dpr);
+
+        // 设置背景
         ctx.fillStyle = '#fff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, canvasWidth, totalHeight);
 
-        // 重新初始化变量进行实际绘制
-        totalUsedHeight = 0;
-
-        // 实际绘制图片
+        // 绘制图片
+        let currentY = 0;
         for (let i = 0; i < totalImages; i += imagesPerRow) {
             const rowImages = images.slice(i, i + imagesPerRow);
+            const rowHeight = Math.max(...rowImages.map(img => img.naturalHeight));
 
-            let maxHeightRatio = 0;
+            let currentX = 0;
             for (const img of rowImages) {
-                const ratio = img.height / img.width;
-                if (ratio > maxHeightRatio) {
-                    maxHeightRatio = ratio;
-                }
+                ctx.drawImage(img, currentX, currentY, img.naturalWidth, img.naturalHeight);
+                currentX += img.naturalWidth;
             }
 
-            const rowHeight = Math.floor(cellWidth * maxHeightRatio);
-
-            // 绘制当前行的所有图片
-            for (let j = 0; j < rowImages.length; j++) {
-                const img = rowImages[j] as HTMLImageElement;
-                const col = j;
-
-                const scale = cellWidth / img.width;
-                const scaledWidth = cellWidth;
-                const scaledHeight = Math.floor(img.height * scale);
-
-                const x = Math.floor(col * cellWidth);
-                const y = totalUsedHeight + Math.floor((rowHeight - scaledHeight) / 2);
-
-                ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
-            }
-
-            totalUsedHeight += rowHeight;
+            currentY += rowHeight;
         }
 
     } catch (error) {
@@ -212,15 +179,12 @@ const draw = async () => {
     }
 }
 
-// 获取每行图片数量的函数
+// getImagesPerRow函数保持不变
 const getImagesPerRow = (): number => {
     if (!StitchingType[0]) return 0;
     if (!stitchingValue.value) {
-        // 如果没有选择，默认使用第一个选项（添加空数组检查）
-        return StitchingType && StitchingType.length > 0 ? StitchingType[0].num : 6; // 默认6张
+        return StitchingType && StitchingType.length > 0 ? StitchingType[0].num : 6;
     }
-
-    // 根据用户选择的下拉框值查找对应的数量
     const selectedOption = StitchingType.find(item => item.name === stitchingValue.value);
     return selectedOption ? selectedOption.num : (StitchingType && StitchingType.length > 0 ? StitchingType[0].num : 6);
 }
@@ -234,11 +198,35 @@ const loadImage = (src: string): Promise<HTMLImageElement> => {
         img.src = src;
     });
 }
+
+const getImageUrl = (id: number) => {
+    const image = ImageInfo.value.find(item => item.id === id)
+    return image?.url || ''
+}
+
+// 获取单个图片的预览列表（从当前图片开始）
+const getPreviewSrcListFromCurrent = (currentId: number) => {
+    if (!List.value?.checkList) return []
+    
+    const currentIndex = List.value.checkList.indexOf(currentId)
+    if (currentIndex === -1) return []
+    
+    // 重新排序，从当前图片开始
+    const reorderedList = [
+        ...List.value.checkList.slice(currentIndex),
+        ...List.value.checkList.slice(0, currentIndex)
+    ]
+    
+    return reorderedList.map(id => {
+        const image = ImageInfo.value.find(item => item.id === id)
+        return image?.url || ''
+    }).filter(url => url !== '')
+}
 </script>
 
 <template>
     <div style="display: flex;">
-        <div style="flex: 4;">
+        <div style="flex: 4.75;">
             <el-card shadow="hover" gradient="true" class="flex-card">
                 <template #header>
                     <div class="card-header">
@@ -274,7 +262,7 @@ const loadImage = (src: string): Promise<HTMLImageElement> => {
                 </div>
             </el-card>
         </div>
-        <div style="flex: 0.25;"></div>
+        <div style="flex: 0.1;"></div>
         <div style="flex: 2">
             <el-card shadow="hover" class="flex-card">
                 <template #header>
@@ -294,9 +282,20 @@ const loadImage = (src: string): Promise<HTMLImageElement> => {
                             <template #item="{ element, index }" :key="element.id">
                                 <div class="draggable-item">
                                     <li>
-                                        <span class="drag-handle"><el-icon>
+                                        <!-- <span class="drag-handle"><el-icon>
                                                 <Picture />
-                                            </el-icon></span>
+                                            </el-icon></span> -->
+                                        <span class="drag-handle">
+                                            <el-image 
+                                                class="thumbnail" 
+                                                :src="getImageUrl(element)"
+                                                :preview-src-list="getPreviewSrcListFromCurrent(element)"
+                                                fit="cover"
+                                                hide-on-click-modal
+                                                preview-teleported
+                                            />
+                                            <!-- <img :src="getImageUrl(element)" alt="缩略图" class="thumbnail" /> -->
+                                        </span>
                                         <span class="image-name">{{ getImageName(element) }}</span>
                                         <el-button @click="clickDelete(index)" text type="danger" :icon="CloseBold"
                                             circle />
@@ -325,10 +324,10 @@ const loadImage = (src: string): Promise<HTMLImageElement> => {
         </div>
 
         <div>
-            <el-dialog v-model="dialogVisible" title="拼接结果" width="75%" draggable>
+            <el-dialog v-model="dialogVisible" title="拼接结果" width="95%" draggable>
                 <el-divider />
                 <ul v-infinite-scroll class="infinite-list2" style="overflow: auto">
-                    <canvas id="canvas" ref="canvas" width="800" height="1"></canvas>
+                    <canvas id="canvas" ref="canvas" width="1" height="1"></canvas>
                 </ul>
                 <!-- <template #footer>
                     <span class="dialog-footer">
@@ -342,6 +341,14 @@ const loadImage = (src: string): Promise<HTMLImageElement> => {
 </template>
 
 <style scoped>
+.thumbnail {
+    width: 30px;
+    height: 30px;
+    object-fit: cover;
+    border-radius: 4px;
+    margin-right: 8px;
+}
+
 canvas {
     border: 1px solid;
 }

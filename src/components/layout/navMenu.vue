@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ImageMenu } from './ImageMenu'
+import { ImageMenu } from '../../data/ImageMenu'
 import { ref } from 'vue';
 import { Fold, Expand } from '@element-plus/icons-vue'
 

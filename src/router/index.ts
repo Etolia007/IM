@@ -20,13 +20,22 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import("../views/ImageStitching.vue"),
       },
       {
-        path: "/ImageManage",
-        name: "ImageManage",
+        path: "/ImageList",
+        name: "ImageList",
         meta: {
-          title: "图片管理",
-          breadcrumb: ["图片管理", "图片管理"],
+          title: "图片列表",
+          breadcrumb: ["图片列表", "图片列表"],
         },
-        component: () => import("../views/ImageManage.vue"),
+        component: () => import("../views/ImageList.vue"),
+      },
+      {
+        path: "/UploadImage",
+        name: "UploadImage",
+        meta: {
+          title: "上传图片",
+          breadcrumb: ["上传图片", "上传图片"],
+        },
+        component: () => import("../views/UploadImage.vue"),
       },
     ]
   },

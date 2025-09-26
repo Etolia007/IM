@@ -26,22 +26,21 @@ const toggleCheck = (id: any) => {
         checkList.value.push(id)
     }
 }
-
-
 </script>
 
 <template>
     <div>
         <div v-if="ImageInfo.length != 0">
             <el-checkbox-group v-model="checkList">
-                <el-row :gutter="5">
-                    <el-col :span="4" v-for="(item, index) in ImageInfo" :key="index">
+                <el-row :gutter="12">
+                    <el-col :span="6" v-for="(item, index) in ImageInfo" :key="index">
                         <div style="position: relative;">
                             <!-- 将 label 设置为空字符串 -->
                             <el-checkbox :label="item.id" :value="item.id" class="custom-checkbox">
                                 <!-- 空内容 -->
+                                 <!-- <span>{{ item.name }}</span> -->
                             </el-checkbox>
-                            <el-image @click="toggleCheck(item.id)" v-if="checkList != null" :src="item.url" fit="fill"
+                            <el-image @click="toggleCheck(item.id)" v-if="checkList != null" :src="item.url" fit="contain"
                                 style="width: 100%; height: 100%;" />
                         </div>
                     </el-col>
@@ -58,7 +57,8 @@ const toggleCheck = (id: any) => {
 .custom-checkbox {
     /* position: absolute; */
     top: 5px;
-    right: 37px;
+    /* right: 25px; */
+    right: 44%;
     z-index: 10;
 }
 

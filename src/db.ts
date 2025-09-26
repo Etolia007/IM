@@ -1,4 +1,5 @@
 import Dexie from 'dexie';
+import { ref } from 'vue';
 
 interface Image {
   id?: number;
@@ -23,5 +24,16 @@ export class ImageDatabase extends Dexie {
   }
 }
 
+// 加载图片列表
+const images = ref<Image[]>([]);
+const loadImages = async () => {
+    try {
+        images.value = await db.images.toArray();
+    } catch (error) {
+        console.error('加载图片失败:', error);
+    }
+};
+
+export{loadImages,images};
 export const db = new ImageDatabase();
 export type { Image };
