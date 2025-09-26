@@ -43,14 +43,14 @@ const List = ref<InstanceType<typeof CheckList> | null>(null)
 // 全选
 const selectAll = () => {
     if (List.value && ImageInfo) {
-        List.value.checkList = ImageInfo.value.map((item: { id: any; }) => item.id);
+        List.value.checkList = ImageInfo.value.map((item) => item.id);
     }
 };
 // 反选
 const invertSelection = () => {
     if (List.value && ImageInfo) {
         const currentSelected = new Set(List.value.checkList);
-        const allIds = ImageInfo.value.map((item: { id: any; }) => item.id || item);
+        const allIds = ImageInfo.value.map((item) => item.id || item);
 
         List.value.checkList = allIds.filter((id: any) => !currentSelected.has(id));
     }

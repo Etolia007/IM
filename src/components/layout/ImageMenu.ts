@@ -11,7 +11,7 @@ interface INavMenu {
 export const ImageMenu = () => {
   const menuItems: INavMenu[] = [
     { name: "图片拼接", url: "/ImageStitching", icon: Connection },
-    { name: "图片管理", url: "/ImageManage", icon: Picture },
+    { name: "管理界面", url: "/ImageManage", icon: Picture },
   ];
   return {
     menuItems,
