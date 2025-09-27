@@ -135,7 +135,8 @@ const getFileNameWithoutExtension = (filename: string) => {
 // 处理文件选择
 const handleUploadChange: UploadProps['onChange'] = (uploadFile, uploadFiles) => {
     fileList.value = uploadFiles;
-
+    console.log(uploadFile);
+    
     // 触发图片类型验证
     if (uploadForm.value) {
         uploadForm.value.validateField('imageType');
@@ -145,6 +146,8 @@ const handleUploadChange: UploadProps['onChange'] = (uploadFile, uploadFiles) =>
 // 处理文件移除
 const handleRemove: UploadProps['onRemove'] = (uploadFile, uploadFiles) => {
     fileList.value = uploadFiles;
+    console.log(uploadFile);
+
 
     // if (uploadFiles.length === 0) {
     //     uploadStatus.value = {
@@ -179,7 +182,7 @@ const handlePreview: UploadProps['onPreview'] = (file) => {
 };
 
 // 上传单张图片到数据库
-const uploadSingleImage = async (file: File, index: number): Promise<boolean> => {
+const uploadSingleImage = async (file: File): Promise<boolean> => {
     return new Promise((resolve) => {
         const reader = new FileReader();
 
@@ -250,7 +253,7 @@ const handleUpload = async () => {
             };
 
             // 上传单张图片
-            const success = await uploadSingleImage(file, i);
+            const success = await uploadSingleImage(file);
 
             if (success) {
                 successCount++;
