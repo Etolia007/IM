@@ -146,19 +146,19 @@ const handleUploadChange: UploadProps['onChange'] = (uploadFile, uploadFiles) =>
 const handleRemove: UploadProps['onRemove'] = (uploadFile, uploadFiles) => {
     fileList.value = uploadFiles;
 
-    if (uploadFiles.length === 0) {
-        // uploadStatus.value = {
-        //     message: '已清除所有图片',
-        //     success: false,
-        //     error: false
-        // };
-    } else {
-        uploadStatus.value = {
-            message: `剩余 ${uploadFiles.length} 个文件`,
-            success: false,
-            error: false
-        };
-    }
+    // if (uploadFiles.length === 0) {
+    //     uploadStatus.value = {
+    //         message: '已清除所有图片',
+    //         success: false,
+    //         error: false
+    //     };
+    // } else {
+    //     uploadStatus.value = {
+    //         message: `剩余 ${uploadFiles.length} 个文件`,
+    //         success: false,
+    //         error: false
+    //     };
+    // }
 };
 
 // 清空所有文件

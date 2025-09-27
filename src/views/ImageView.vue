@@ -36,7 +36,7 @@ const toggleCheck = (id: any) => {
                     <el-col :span="6" v-for="(item, index) in ImageInfo" :key="index">
                         <div style="position: relative;">
                             <!-- 将 label 设置为空字符串 -->
-                            <el-checkbox :label="item.id" :value="item.id" class="custom-checkbox">
+                            <el-checkbox :label="item.id"  class="custom-checkbox">
                                 <!-- 空内容 -->
                                  <!-- <span>{{ item.name }}</span> -->
                             </el-checkbox>

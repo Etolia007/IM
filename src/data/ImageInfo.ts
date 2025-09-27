@@ -8,7 +8,6 @@ export const ImageInfo = ref<Array<{id?: number, name: string, type: string, url
 async function loadImagesFromDatabase() {
   try {
     const imagesFromDb = await db.images.toArray();
-    
     // 将数据库中的数据转换为ImageInfo所需的格式
     ImageInfo.value = imagesFromDb.map(image => ({
       id: image.id,
@@ -16,13 +15,12 @@ async function loadImagesFromDatabase() {
       type: image.type,
       url: image.data // 数据库中的data字段就是base64格式的图片数据
     }));
+    console.log("数据加载成功！");
   } catch (error) {
     console.error('从数据库加载图片失败:', error);
   }
 }
 
-// 组件挂载时加载数据（如果是在Vue组件中使用）
-// 如果这个文件是纯数据文件，可以在导入时立即加载
 loadImagesFromDatabase();
 
 // 导出加载函数，以便在其他地方手动调用
