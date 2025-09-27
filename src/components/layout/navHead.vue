@@ -4,7 +4,7 @@
 
 <template>
     <div class="navbar">
-        <h2 style="color: #3498db;">IM系统</h2>
+        <h2 style="color: #3498db;">IM</h2>
         <!-- <div class="navbar-actions">
             <el-button type="primary" text plain size="large">📁 图片管理</el-button>
         </div> -->
