@@ -12,8 +12,8 @@
             <el-form ref="uploadForm" :model="formData" :rules="rules" label-width="100px" :size="formSize">
                 <div class="form-content">
                     <div class="form-left">
-                        <el-form-item label="图片类型:" prop="imageType">
-                            <el-select v-model="formData.imageType" clearable placeholder="请选择图片类型"
+                        <el-form-item label="图片类别:" prop="imageType">
+                            <el-select v-model="formData.imageType" clearable placeholder="请选择图片类别"
                                 style="width: 100%; max-width: 300px;">
                                 <el-option v-for="item in filteredImageTypes" :key="item" :label="item" :value="item" />
                             </el-select>

@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { ImageInfo } from "../data/ImageInfo";
 
 // 子组件获取父组件传值
 interface Props {
     ImageInfo: any[],
 }
-// const props = 
 defineProps<Props>()
 
-const checkList = ref<any[]>([]) // 存储选中的图片对象
+const checkList = ref<any[]>([]) // 存储选中的图片ID
 
 defineExpose({
     checkList
@@ -33,15 +31,19 @@ const toggleCheck = (id: any) => {
         <div v-if="ImageInfo.length != 0">
             <el-checkbox-group v-model="checkList">
                 <el-row :gutter="12">
-                    <el-col :span="6" v-for="(item, index) in ImageInfo" :key="index">
-                        <div style="position: relative;">
-                            <!-- 将 label 设置为空字符串 -->
-                            <el-checkbox :label="item.id"  class="custom-checkbox">
-                                <!-- 空内容 -->
-                                 <!-- <span>{{ item.name }}</span> -->
+                    <el-col :span="6" v-for="item in ImageInfo" :key="item.id">
+                        <div style="position: relative; margin-bottom: 20px;">
+                            <el-checkbox :label="item.id" class="custom-checkbox">
                             </el-checkbox>
-                            <el-image @click="toggleCheck(item.id)" v-if="checkList != null" :src="item.url" fit="contain"
-                                style="width: 100%; height: 100%;" />
+                            <el-image 
+                                @click="toggleCheck(item.id)" 
+                                :src="item.data" 
+                                fit="contain"
+                                :class="{ 'selected-image': checkList.includes(item.id) }"
+                                style="width: 100%; height: 100%; border: 1px solid #e1e8ed; border-radius: 8px;"
+                                hide-on-click-modal
+                                preview-teleported
+                            />
                         </div>
                     </el-col>
                 </el-row>
@@ -55,14 +57,40 @@ const toggleCheck = (id: any) => {
 
 <style scoped>
 .custom-checkbox {
-    /* position: absolute; */
-    top: 5px;
-    /* right: 25px; */
-    right: 44%;
+    position: absolute;
+    top: -3px;
+    left: 5px;
     z-index: 10;
 }
 
-.custom-checkbox .el-checkbox__label {
+.custom-checkbox :deep(.el-checkbox__label) {
     display: none;
+}
+
+/* 选中状态的样式 */
+.custom-checkbox :deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
+    background-color: #409EFF;
+    border-color: #409EFF;
+}
+
+/* 图片容器悬停效果 - 增强 */
+.el-col:hover .el-image {
+    border-color: #409EFF;
+    box-shadow: 0 8px 25px rgba(64, 158, 255, 0.4);
+    transition: all 0.3s ease;
+    transform: translateY(-3px);
+}
+
+.selected-image {
+    box-shadow: 0 0 0 3px #409EFF !important;
+}
+/* 确保图片显示正常 */
+.el-image {
+    background: #f5f5f5;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+:deep(.el-checkbox__inner) {
+  border-radius: 50%;
 }
 </style>

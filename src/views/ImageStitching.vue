@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { onMounted, ref, reactive, nextTick } from 'vue'
+import { onMounted, ref, nextTick, } from 'vue'
 import { ImageType } from "../data/ImageType"
-import { ImageInfo } from "../data/ImageInfo";
 import { StitchingType } from "../data/StitchingType.ts";
 import ImageView from "./ImageView.vue";
 import CheckList from './ImageView.vue'
 import { Star, CloseBold } from "@element-plus/icons-vue";
 import draggable from 'vuedraggable';
+import { loadImages, images } from '../db';
+import { loadImagesFromDatabase } from '../data/ImageInfo';
+
 
 interface ListItem {
     value: string
@@ -15,60 +17,65 @@ interface ListItem {
 
 const list = ref<ListItem[]>([])
 const options = ref<ListItem[]>([])
-// 修改：设置默认值为第一个选项（全部）
 const value = ref<string>('')
 
-onMounted(() => {
-    list.value = ImageType.map((item) => {
-        return { value: `value:${item}`, label: `${item}` }
+// 使用IndexedDB的images数据
+const currentCategoryImages = ref<any[]>([])
+
+onMounted(async () => {
+    // 加载IndexedDB数据
+    await loadImages();
+    await loadImagesFromDatabase();
+
+    list.value = ImageType.map((item, index) => {
+        return { value: index.toString(), label: item }
     })
     options.value = list.value
-    
-    // 修改：设置默认选中第一个选项（全部）
+
+    // 设置默认选中第一个选项（全部）
     if (options.value.length > 0 && options.value[0]) {
-    value.value = options.value[0].value
-    clickTab(value.value)
-}
+        value.value = options.value[0].value
+        clickTab(value.value)
+    }
 })
 
-// 传值数据
-const Images = reactive(ImageInfo.value.concat())
-const getFilteredImages = (type: string) => {
-    return type === '全部'
-        ? Images
-        : Images.filter((item: { type: string; }) => item.type === type)
+// 获取过滤后的图片数据
+const getFilteredImages = (typeIndex: string) => {
+    const index = parseInt(typeIndex);
+    if (index === 0) return images.value; // 全部
+
+    const typeName = ImageType[index];
+    return images.value.filter(image => image.type === typeName);
 }
 
 const clickTab = (key: string) => {
-    const filterType = key.replace('value:', '')
-    const filtered = getFilteredImages(filterType)
-    // 只更新显示，不覆盖原始数据
-    ImageInfo.value.splice(0, ImageInfo.value.length, ...filtered)
+    const filtered = getFilteredImages(key);
+    currentCategoryImages.value = filtered;
 }
 
 const List = ref<InstanceType<typeof CheckList> | null>(null)
-    
+
 // 全选 - 当前分类
 const selectAll = () => {
-    if (List.value && ImageInfo.value) {
+    if (List.value && currentCategoryImages.value) {
         const currentSelected = new Set(List.value.checkList || []);
-        const currentCategoryIds = ImageInfo.value.map((item) => item.id);
-        
+        const currentCategoryIds = currentCategoryImages.value.map((item) => item.id);
+
         // 添加当前分类所有图片到已选列表
         currentCategoryIds.forEach(id => {
             currentSelected.add(id);
         });
-        
+
         List.value.checkList = Array.from(currentSelected);
     }
 };
 
 // 反选 - 当前分类
 const invertSelection = () => {
-    if (List.value && ImageInfo.value) {
+    if (List.value && currentCategoryImages.value) {
         const currentSelected = new Set(List.value.checkList || []);
-        const currentCategoryIds = new Set(ImageInfo.value.map((item) => item.id));
-        
+        const currentCategoryIds = new Set(currentCategoryImages.value.map((item) => item.id));
+
         // 对当前分类的图片进行反选
         currentCategoryIds.forEach(id => {
             if (currentSelected.has(id)) {
@@ -77,22 +84,22 @@ const invertSelection = () => {
                 currentSelected.add(id); // 未选则添加
             }
         });
-        
+
         List.value.checkList = Array.from(currentSelected);
     }
 };
 
 // 清空 - 只清空当前分类的选中
 const clearSelection = () => {
-    if (List.value && ImageInfo.value) {
+    if (List.value && currentCategoryImages.value) {
         const currentSelected = new Set(List.value.checkList || []);
-        const currentCategoryIds = new Set(ImageInfo.value.map(item => item.id));
-        
+        const currentCategoryIds = new Set(currentCategoryImages.value.map(item => item.id));
+
         // 只移除当前分类的选中
         currentCategoryIds.forEach(id => {
             currentSelected.delete(id);
         });
-        
+
         List.value.checkList = Array.from(currentSelected);
     }
 };
@@ -104,8 +111,7 @@ const onListChange = (event: any) => {
 }
 
 const getImageName = (id: number) => {
-    // 从全局 Images 中查找，而不是当前分类的 ImageInfo
-    const image = Images.find(item => item.id === id)
+    const image = images.value.find(item => item.id === id)
     return image?.name || '未知'
 }
 
@@ -116,7 +122,7 @@ const clickDelete = (element: number) => {
     if (element < 0 || element >= List.value.checkList.length) return;
 
     // 获取要删除的元素的ID，以便同时更新复选框状态
-    const deletedItemId = List.value.checkList[element].id;
+    const deletedItemId = List.value.checkList[element];
 
     // 从已选择列表中移除指定索引的元素
     List.value.checkList.splice(element, 1);
@@ -159,22 +165,22 @@ const draw = async () => {
         const selectedImageIds = List?.value?.checkList || [];
         const selectedImages = [];
         for (const id of selectedImageIds) {
-            // 修改这里：从全局 Images 中查找，而不是当前分类的 ImageInfo.value
-            const image = Images.find(item => item.id === id);
+            const image = images.value.find(item => item.id === id);
             if (image) selectedImages.push(image);
         }
 
-        const imageUrls = selectedImages.map(item => item.url);
-        const images = await Promise.all(imageUrls.map(src => loadImage(src)));
+        // 使用data字段（base64数据）作为图片源
+        const imageDataUrls = selectedImages.map(item => item.data);
+        const imagesElements = await Promise.all(imageDataUrls.map(src => loadImage(src)));
 
         const imagesPerRow = getImagesPerRow();
-        const totalImages = images.length;
+        const totalImages = imagesElements.length;
         if (totalImages === 0) return;
 
         // 计算画布宽度：取每行图片原始宽度之和的最大值
         let canvasWidth = 0;
         for (let i = 0; i < totalImages; i += imagesPerRow) {
-            const rowImages = images.slice(i, i + imagesPerRow);
+            const rowImages = imagesElements.slice(i, i + imagesPerRow);
             const rowWidth = rowImages.reduce((sum, img) => sum + img.naturalWidth, 0);
             if (rowWidth > canvasWidth) canvasWidth = rowWidth;
         }
@@ -182,7 +188,7 @@ const draw = async () => {
         // 计算画布总高度：每行高度为该行中图片的最大高度
         let totalHeight = 0;
         for (let i = 0; i < totalImages; i += imagesPerRow) {
-            const rowImages = images.slice(i, i + imagesPerRow);
+            const rowImages = imagesElements.slice(i, i + imagesPerRow);
             const rowHeight = Math.max(...rowImages.map(img => img.naturalHeight));
             totalHeight += rowHeight;
         }
@@ -201,7 +207,7 @@ const draw = async () => {
         // 绘制图片
         let currentY = 0;
         for (let i = 0; i < totalImages; i += imagesPerRow) {
-            const rowImages = images.slice(i, i + imagesPerRow);
+            const rowImages = imagesElements.slice(i, i + imagesPerRow);
             const rowHeight = Math.max(...rowImages.map(img => img.naturalHeight));
 
             let currentX = 0;
@@ -240,26 +246,27 @@ const loadImage = (src: string): Promise<HTMLImageElement> => {
     });
 }
 
+// 获取图片URL（使用data字段）
 const getImageUrl = (id: number) => {
-    const image = Images.find(item => item.id === id)
-    return image?.url || ''
+    const image = images.value.find(item => item.id === id)
+    return image?.data || ''
 }
 
 // 获取单个图片的预览列表（从当前图片开始）
 const getPreviewSrcListFromCurrent = (currentId: number) => {
     if (!List.value?.checkList) return []
-    
+
     const currentIndex = List.value.checkList.indexOf(currentId)
     if (currentIndex === -1) return []
-    
+
     const reorderedList = [
         ...List.value.checkList.slice(currentIndex),
         ...List.value.checkList.slice(0, currentIndex)
     ]
-    
+
     return reorderedList.map(id => {
-        const image = Images.find(item => item.id === id)
-        return image?.url || ''
+        const image = images.value.find(item => item.id === id)
+        return image?.data || '' // 使用data字段
     }).filter(url => url !== '')
 }
 </script>
@@ -270,13 +277,12 @@ const getPreviewSrcListFromCurrent = (currentId: number) => {
             <el-card shadow="hover" gradient="true" class="flex-card">
                 <template #header>
                     <div class="card-header">
-                        <!-- 修改：移除clearable属性，确保有默认值 -->
                         <el-select v-model="value" placeholder="请选择" size="large" @change="clickTab">
                             <el-option v-for="item in options" :key="item.value" :label="item.label"
                                 :value="item.value" />
                         </el-select>
-                        <el-button link type="text">当前选项共有<span style="font-weight: bold;color: #409EFF;">&nbsp;{{
-                            ImageInfo.length }}&nbsp;</span>张图片</el-button>
+                        <el-button link type="text">当前分类下共有<span style="font-weight: bold;color: #409EFF;">&nbsp;{{
+                            currentCategoryImages.length }}&nbsp;</span>张图片</el-button>
                     </div>
                     <div>
                         <el-divider>
@@ -285,11 +291,11 @@ const getPreviewSrcListFromCurrent = (currentId: number) => {
                             </el-icon></el-divider>
                     </div>
                     <div class="text">
-                        <el-link :underline="false">当前共选择
+                        <el-link :underline="false">温馨提示：点击图片即可选中，当前共选择
                             <el-link type="primary" :underline="false">
                                 <span style="font-weight: bold;">&nbsp;{{ List?.checkList?.length
                                 }}&nbsp;</span> </el-link>
-                            张图片
+                            张图片。
                         </el-link>
                         <div class="button-group">
                             <el-button type="primary" round plain @click="selectAll">全选</el-button>
@@ -299,7 +305,7 @@ const getPreviewSrcListFromCurrent = (currentId: number) => {
                     </div>
                 </template>
                 <div class="table-container1">
-                    <ImageView ref="List" :ImageInfo="ImageInfo" />
+                    <ImageView ref="List" :ImageInfo="currentCategoryImages" />
                 </div>
             </el-card>
         </div>
@@ -310,7 +316,7 @@ const getPreviewSrcListFromCurrent = (currentId: number) => {
                     <div class="card-header">
                         <span style="font-weight: bold;">已选择的图片</span>
                     </div>
-                    <div style="font-size: small;color: #909399; text-align: left; ">拖拽图片可调整顺序</div>
+                    <div style="font-size: small;color: #909399; text-align: left; ">拖拽图片可调整顺序,点击缩略图可查看预览</div>
                 </template>
                 <div class="table-container2">
                     <div v-if="List?.checkList?.length === 0">
@@ -320,20 +326,17 @@ const getPreviewSrcListFromCurrent = (currentId: number) => {
                         <draggable @change="onListChange" :list="List?.checkList" ghost-class="ghost"
                             chosen-class="chosenClass" animation="300" @start="drag = true" @end="drag = false"
                             item-key="id">
-                            <template #item="{ element, index }" :key="element.id">
+                            <template #item="{ element, index }" :key="element">
                                 <div class="draggable-item">
                                     <li>
                                         <span class="drag-handle">
-                                            <el-image 
-                                                class="thumbnail" 
-                                                :src="getImageUrl(element)"
-                                                :preview-src-list="getPreviewSrcListFromCurrent(element)"
-                                                fit="cover"
-                                                hide-on-click-modal
-                                                preview-teleported
-                                            />
+                                            <el-image class="thumbnail" :src="getImageUrl(element)"
+                                                :preview-src-list="getPreviewSrcListFromCurrent(element)" fit="cover"
+                                                hide-on-click-modal preview-teleported />
                                         </span>
-                                        <span class="image-name">{{ getImageName(element) }}</span>
+                                        <span class="image-name">
+                                                {{ getImageName(element) }}
+                                        </span>
                                         <el-button @click="clickDelete(index)" text type="danger" :icon="CloseBold"
                                             circle />
                                     </li>
@@ -366,36 +369,19 @@ const getPreviewSrcListFromCurrent = (currentId: number) => {
                 <ul v-infinite-scroll class="infinite-list2" style="overflow: auto">
                     <!-- 隐藏canvas，使用el-image展示拼接结果 -->
                     <canvas id="canvas" ref="canvas" width="1" height="1" style="display: none;"></canvas>
-                    <el-image 
-                        v-if="stitchedImageUrl" 
-                        :src="stitchedImageUrl" 
-                        fit="contain" 
-                        style="max-width: 100%;"
-                        :preview-src-list="[stitchedImageUrl]"
-                        hide-on-click-modal
-                        preview-teleported
-                    />
+                    <el-image v-if="stitchedImageUrl" :src="stitchedImageUrl" fit="contain" style="max-width: 100%;"
+                        :preview-src-list="[stitchedImageUrl]" hide-on-click-modal preview-teleported />
                     <div v-else style="text-align: center; padding: 20px;">
                         <p>请先生成拼接图</p>
                     </div>
                 </ul>
-                <!-- <template #footer>
-                    <span class="dialog-footer">
-                        <el-button @click="dialogVisible = false">关闭</el-button>
-                        <el-button 
-                            v-if="stitchedImageUrl" 
-                            type="primary" 
-                            @click="dialogVisible = false"
-                            :download="'stitched-image.png'"
-                            :href="stitchedImageUrl"
-                        >下载拼接图</el-button>
-                    </span>
-                </template> -->
             </el-dialog>
         </div>
     </div>
 </template>
+
 <style scoped>
+/* 样式保持不变 */
 .thumbnail {
     width: 30px;
     height: 30px;
@@ -432,7 +418,7 @@ canvas {
         padding: 12px 15px;
     }
 
-    .table-container {
+    .table-container1 {
         padding: 15px;
     }
 }
@@ -491,8 +477,45 @@ canvas {
 .image-name {
     flex: 1;
     font-size: 1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+.image-name {
+    flex: 1;
+    font-size: 1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    max-width: 150px;
 }
 
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .image-name {
+        max-width: 100px;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .image-name {
+        max-width: 80px;
+        font-size: 0.8rem;
+    }
+}
+.draggable-item li {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    color: #2c3e50;
+    font-weight: 500;
+    min-width: 0;
+    overflow: hidden;
+}
 
 .flex-card {
     border-radius: 10px;
@@ -521,10 +544,6 @@ canvas {
 .table-container2 {
     height: 300px;
 }
-
-/* .table-container3 {
-    overflow: auto;
-} */
 
 .card-container {
     height: 300px;
