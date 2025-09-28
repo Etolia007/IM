@@ -1,34 +1,37 @@
-import { ref } from "vue";
-import { db } from "../db";
+import { ref, computed } from "vue";
+import { db, type Image } from "../db";
 
-// 创建一个响应式的图片列表，初始为空
-export const ImageInfo = ref<Array<{id?: number, name: string, type: string, url: string}>>([]);
+// 统一的数据存储
+export const imageList = ref<Image[]>([]);
 
-// 从数据库加载图片数据的函数
-async function loadImagesFromDatabase() {
+// 加载图片数据的函数
+export async function loadImagesFromDatabase() {
   try {
     const imagesFromDb = await db.images.toArray();
-    // 将数据库中的数据转换为ImageInfo所需的格式
-    ImageInfo.value = imagesFromDb.map(image => ({
-      id: image.id,
-      name: image.name,
-      type: image.type,
-      url: image.data // 数据库中的data字段就是base64格式的图片数据
-    }));
-    console.log("数据加载成功！");
+    imageList.value = imagesFromDb;
+    console.log("数据加载成功！", imagesFromDb.length);
   } catch (error) {
     console.error('从数据库加载图片失败:', error);
   }
 }
 
-loadImagesFromDatabase();
+// 计算属性：转换为组件需要的格式
+export const ImageInfo = computed(() => {
+  return imageList.value.map(image => ({
+    id: image.id,
+    name: image.name,
+    type: image.type,
+    data: image.data, // 使用 data 字段，与数据库一致
+    filename: image.filename
+  }));
+});
 
-// 导出加载函数，以便在其他地方手动调用
-export { loadImagesFromDatabase };
-
-// 小图生成函数（根据需求调整）
+// 小图生成函数
 export function generateSmallImages() {
-  return ImageInfo.value.map(item => item.url);
+  return imageList.value.map(item => item.data);
 }
 
 export const smallImages = generateSmallImages();
+
+// 初始化加载
+loadImagesFromDatabase();

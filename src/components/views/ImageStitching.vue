@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { onMounted, ref, nextTick, } from 'vue'
-import { ImageType } from "../data/ImageType"
-import { StitchingType } from "../data/StitchingType.ts";
+import { onMounted, ref, nextTick, computed, watch, onUnmounted } from 'vue'
+import { ImageType } from "../../data/ImageType"
+import { StitchingType } from "../../data/StitchingType.ts";
 import ImageView from "./ImageView.vue";
 import CheckList from './ImageView.vue'
-import { Star, CloseBold } from "@element-plus/icons-vue";
+import { Star, CloseBold, Loading } from "@element-plus/icons-vue";
 import draggable from 'vuedraggable';
-import { loadImages, images } from '../db';
-import { loadImagesFromDatabase } from '../data/ImageInfo';
-
+import { loadImages, images } from '../../db';
+import { loadImagesFromDatabase } from '../../data/ImageInfo';
 
 interface ListItem {
     value: string
@@ -22,8 +21,44 @@ const value = ref<string>('')
 // 使用IndexedDB的images数据
 const currentCategoryImages = ref<any[]>([])
 
+// 分页相关变量
+const pageSize = ref(20)
+const currentPage = ref(1)
+const loading = ref(false)
+
+// 分页后的图片数据
+const paginatedImages = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return currentCategoryImages.value.slice(0, end)
+})
+
+// 滚动加载
+const onScroll = (event: Event) => {
+  const container = event.target as HTMLElement
+  if (container.scrollHeight - container.scrollTop <= container.clientHeight + 100) {
+    loadMore()
+  }
+}
+
+const loadMore = () => {
+  if (loading.value || paginatedImages.value.length >= currentCategoryImages.value.length) {
+    return
+  }
+  
+  loading.value = true
+  setTimeout(() => {
+    currentPage.value += 1
+    loading.value = false
+  }, 200)
+}
+
+// 分类切换时重置分页
+watch(currentCategoryImages, () => {
+  currentPage.value = 1
+})
+
 onMounted(async () => {
-    // 加载IndexedDB数据
     await loadImages();
     await loadImagesFromDatabase();
 
@@ -32,7 +67,6 @@ onMounted(async () => {
     })
     options.value = list.value
 
-    // 设置默认选中第一个选项（全部）
     if (options.value.length > 0 && options.value[0]) {
         value.value = options.value[0].value
         clickTab(value.value)
@@ -42,7 +76,7 @@ onMounted(async () => {
 // 获取过滤后的图片数据
 const getFilteredImages = (typeIndex: string) => {
     const index = parseInt(typeIndex);
-    if (index === 0) return images.value; // 全部
+    if (index === 0) return images.value;
 
     const typeName = ImageType[index];
     return images.value.filter(image => image.type === typeName);
@@ -61,7 +95,6 @@ const selectAll = () => {
         const currentSelected = new Set(List.value.checkList || []);
         const currentCategoryIds = currentCategoryImages.value.map((item) => item.id);
 
-        // 添加当前分类所有图片到已选列表
         currentCategoryIds.forEach(id => {
             currentSelected.add(id);
         });
@@ -76,12 +109,11 @@ const invertSelection = () => {
         const currentSelected = new Set(List.value.checkList || []);
         const currentCategoryIds = new Set(currentCategoryImages.value.map((item) => item.id));
 
-        // 对当前分类的图片进行反选
         currentCategoryIds.forEach(id => {
             if (currentSelected.has(id)) {
-                currentSelected.delete(id); // 已选则移除
+                currentSelected.delete(id);
             } else {
-                currentSelected.add(id); // 未选则添加
+                currentSelected.add(id);
             }
         });
 
@@ -95,7 +127,6 @@ const clearSelection = () => {
         const currentSelected = new Set(List.value.checkList || []);
         const currentCategoryIds = new Set(currentCategoryImages.value.map(item => item.id));
 
-        // 只移除当前分类的选中
         currentCategoryIds.forEach(id => {
             currentSelected.delete(id);
         });
@@ -118,16 +149,12 @@ const getImageName = (id: number) => {
 const clickDelete = (element: number) => {
     if (!List.value || !List.value.checkList) return;
 
-    // 确保索引在有效范围内
     if (element < 0 || element >= List.value.checkList.length) return;
 
-    // 获取要删除的元素的ID，以便同时更新复选框状态
     const deletedItemId = List.value.checkList[element];
 
-    // 从已选择列表中移除指定索引的元素
     List.value.checkList.splice(element, 1);
 
-    // 同时更新复选框组的选中状态
     const checkIndex = List.value.checkList.indexOf(deletedItemId);
     if (checkIndex !== -1) {
         List.value.checkList.splice(checkIndex, 1);
@@ -142,16 +169,56 @@ onMounted(() => {
 })
 
 const dialogVisible = ref(false)
-// 添加拼接图URL的ref
 const stitchedImageUrl = ref('')
 
-const onStitching = async () => {
-    dialogVisible.value = true
-    await nextTick() // 等待DOM更新，确保画布已经渲染
-    draw()
+// 图片缓存
+const imageCache = new Map()
+
+// 优化图片URL获取
+const getImageUrl = (id: number) => {
+  if (imageCache.has(id)) {
+    return imageCache.get(id)
+  }
+  
+  const image = images.value.find(item => item.id === id)
+  if (image?.data) {
+    imageCache.set(id, image.data)
+    return image.data
+  }
+  return ''
 }
 
-const draw = async () => {
+// 清空缓存
+const clearImageCache = () => {
+  imageCache.clear()
+}
+
+watch(currentCategoryImages, clearImageCache)
+
+// 拼接控制
+let stitchingController: AbortController | null = null
+
+const onStitching = async () => {
+  if (stitchingController) {
+    stitchingController.abort()
+  }
+  
+  stitchingController = new AbortController()
+  dialogVisible.value = true
+  await nextTick()
+  
+  try {
+    await draw(stitchingController.signal)
+  } catch (error: any) {
+    if (error.name !== 'AbortError') {
+      console.error('图片拼接失败:', error)
+    }
+  }
+}
+
+const draw = async (signal?: AbortSignal) => {
+    if (signal?.aborted) return
+    
     const canvas = document.getElementById('canvas') as HTMLCanvasElement;
     if (!canvas) return;
 
@@ -159,9 +226,10 @@ const draw = async () => {
     if (!ctx) return;
 
     try {
+        if (signal?.aborted) return
+        
         const dpr = window.devicePixelRatio || 1;
 
-        // 获取选中的图片ID列表
         const selectedImageIds = List?.value?.checkList || [];
         const selectedImages = [];
         for (const id of selectedImageIds) {
@@ -169,15 +237,17 @@ const draw = async () => {
             if (image) selectedImages.push(image);
         }
 
-        // 使用data字段（base64数据）作为图片源
-        const imageDataUrls = selectedImages.map(item => item.data);
+        // 限制最大拼接图片数量
+        const maxImages = 100
+        const limitedImages = selectedImages.slice(0, maxImages)
+        
+        const imageDataUrls = limitedImages.map(item => item.data);
         const imagesElements = await Promise.all(imageDataUrls.map(src => loadImage(src)));
 
         const imagesPerRow = getImagesPerRow();
         const totalImages = imagesElements.length;
         if (totalImages === 0) return;
 
-        // 计算画布宽度：取每行图片原始宽度之和的最大值
         let canvasWidth = 0;
         for (let i = 0; i < totalImages; i += imagesPerRow) {
             const rowImages = imagesElements.slice(i, i + imagesPerRow);
@@ -185,7 +255,6 @@ const draw = async () => {
             if (rowWidth > canvasWidth) canvasWidth = rowWidth;
         }
 
-        // 计算画布总高度：每行高度为该行中图片的最大高度
         let totalHeight = 0;
         for (let i = 0; i < totalImages; i += imagesPerRow) {
             const rowImages = imagesElements.slice(i, i + imagesPerRow);
@@ -193,18 +262,15 @@ const draw = async () => {
             totalHeight += rowHeight;
         }
 
-        // 设置画布尺寸
         canvas.style.width = canvasWidth + 'px';
         canvas.style.height = totalHeight + 'px';
         canvas.width = canvasWidth * dpr;
         canvas.height = totalHeight * dpr;
         ctx.scale(dpr, dpr);
 
-        // 设置背景
         ctx.fillStyle = '#fff';
         ctx.fillRect(0, 0, canvasWidth, totalHeight);
 
-        // 绘制图片
         let currentY = 0;
         for (let i = 0; i < totalImages; i += imagesPerRow) {
             const rowImages = imagesElements.slice(i, i + imagesPerRow);
@@ -218,7 +284,6 @@ const draw = async () => {
             currentY += rowHeight;
         }
 
-        // 将canvas转换为图片URL
         stitchedImageUrl.value = canvas.toDataURL('image/png');
 
     } catch (error) {
@@ -226,7 +291,6 @@ const draw = async () => {
     }
 }
 
-// getImagesPerRow函数保持不变
 const getImagesPerRow = (): number => {
     if (!StitchingType[0]) return 0;
     if (!stitchingValue.value) {
@@ -236,7 +300,6 @@ const getImagesPerRow = (): number => {
     return selectedOption ? selectedOption.num : (StitchingType && StitchingType.length > 0 ? StitchingType[0].num : 6);
 }
 
-// 图片加载辅助函数
 const loadImage = (src: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -246,13 +309,7 @@ const loadImage = (src: string): Promise<HTMLImageElement> => {
     });
 }
 
-// 获取图片URL（使用data字段）
-const getImageUrl = (id: number) => {
-    const image = images.value.find(item => item.id === id)
-    return image?.data || ''
-}
-
-// 获取单个图片的预览列表（从当前图片开始）
+// 优化预览列表获取
 const getPreviewSrcListFromCurrent = (currentId: number) => {
     if (!List.value?.checkList) return []
 
@@ -266,9 +323,17 @@ const getPreviewSrcListFromCurrent = (currentId: number) => {
 
     return reorderedList.map(id => {
         const image = images.value.find(item => item.id === id)
-        return image?.data || '' // 使用data字段
+        return image?.data || ''
     }).filter(url => url !== '')
 }
+
+// 组件卸载时清理
+onUnmounted(() => {
+  if (stitchingController) {
+    stitchingController.abort()
+  }
+  clearImageCache()
+})
 </script>
 
 <template>
@@ -304,8 +369,16 @@ const getPreviewSrcListFromCurrent = (currentId: number) => {
                         </div>
                     </div>
                 </template>
-                <div class="table-container1">
-                    <ImageView ref="List" :ImageInfo="currentCategoryImages" />
+                <div class="table-container1" @scroll="onScroll">
+                    <ImageView ref="List" :ImageInfo="paginatedImages" :total="currentCategoryImages.length" />
+                    <div v-if="loading" class="loading-more">
+                        <el-icon class="is-loading"><Loading /></el-icon>
+                        加载中...
+                    </div>
+                    <div v-if="paginatedImages.length >= currentCategoryImages.length && currentCategoryImages.length > 0" 
+                         class="load-complete">
+                        已加载全部图片
+                    </div>
                 </div>
             </el-card>
         </div>
@@ -324,7 +397,7 @@ const getPreviewSrcListFromCurrent = (currentId: number) => {
                     </div>
                     <div v-else class="item">
                         <draggable @change="onListChange" :list="List?.checkList" ghost-class="ghost"
-                            chosen-class="chosenClass" animation="300" @start="drag = true" @end="drag = false"
+                            chosen-class="chosenClass" animation="300" @start="drag=true" @end="drag=false"
                             item-key="id">
                             <template #item="{ element, index }" :key="element">
                                 <div class="draggable-item">
@@ -332,7 +405,7 @@ const getPreviewSrcListFromCurrent = (currentId: number) => {
                                         <span class="drag-handle">
                                             <el-image class="thumbnail" :src="getImageUrl(element)"
                                                 :preview-src-list="getPreviewSrcListFromCurrent(element)" fit="cover"
-                                                hide-on-click-modal preview-teleported />
+                                                hide-on-click-modal preview-teleported lazy />
                                         </span>
                                         <span class="image-name">
                                                 {{ getImageName(element) }}
@@ -366,11 +439,10 @@ const getPreviewSrcListFromCurrent = (currentId: number) => {
         <div>
             <el-dialog v-model="dialogVisible" title="拼接结果" width="75%" draggable>
                 <el-divider />
-                <ul v-infinite-scroll class="infinite-list2" style="overflow: auto">
-                    <!-- 隐藏canvas，使用el-image展示拼接结果 -->
+                <ul class="infinite-list2" style="overflow: auto">
                     <canvas id="canvas" ref="canvas" width="1" height="1" style="display: none;"></canvas>
                     <el-image v-if="stitchedImageUrl" :src="stitchedImageUrl" fit="contain" style="max-width: 100%;"
-                        :preview-src-list="[stitchedImageUrl]" hide-on-click-modal preview-teleported />
+                        :preview-src-list="[stitchedImageUrl]" hide-on-click-modal preview-teleported lazy />
                     <div v-else style="text-align: center; padding: 20px;">
                         <p>请先生成拼接图</p>
                     </div>
@@ -381,7 +453,6 @@ const getPreviewSrcListFromCurrent = (currentId: number) => {
 </template>
 
 <style scoped>
-/* 样式保持不变 */
 .thumbnail {
     width: 30px;
     height: 30px;
@@ -408,7 +479,6 @@ canvas {
     font-weight: 500;
 }
 
-/* 响应式设计 */
 @media (max-width: 768px) {
     .container {
         max-width: 100%;
@@ -428,7 +498,6 @@ canvas {
     transform: rotate(2deg);
 }
 
-/* 拖拽效果 */
 .ghost {
     opacity: 0.6;
     background: #f8f9fa;
@@ -481,18 +550,9 @@ canvas {
     text-overflow: ellipsis;
     white-space: nowrap;
     min-width: 0;
-}
-.image-name {
-    flex: 1;
-    font-size: 1rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
     max-width: 150px;
 }
 
-/* 响应式调整 */
 @media (max-width: 768px) {
     .image-name {
         max-width: 100px;
@@ -506,6 +566,7 @@ canvas {
         font-size: 0.8rem;
     }
 }
+
 .draggable-item li {
     list-style: none;
     display: flex;
@@ -535,10 +596,6 @@ canvas {
 .flex-card :deep(.el-card__body) {
     flex: 1;
     overflow: auto;
-}
-
-.table-container1 {
-    height: 300px;
 }
 
 .table-container2 {
@@ -594,5 +651,20 @@ canvas {
 
 .item {
     margin-bottom: 18px;
+}
+
+/* 新增样式 */
+.loading-more, .load-complete {
+    text-align: center;
+    padding: 10px;
+    color: #909399;
+    font-size: 14px;
+}
+
+.table-container1 {
+    padding:5px;
+    height: 300px;
+    overflow-y: auto;
+    overflow-x: hidden; /* 隐藏滚动条 */
 }
 </style>

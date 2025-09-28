@@ -80,9 +80,9 @@
 <script setup lang="ts">
 import { computed, ref, reactive } from "vue";
 import { ElMessage, type FormInstance, type FormRules, type UploadProps, type UploadUserFile } from "element-plus";
-import { ImageType } from '../data/ImageType';
-import { db } from '../db';
-import { loadImagesFromDatabase } from '../data/ImageInfo';
+import { ImageType } from '../../data/ImageType';
+import { db } from '../../db';
+import { loadImagesFromDatabase } from '../../data/ImageInfo';
 
 // 表单尺寸
 const formSize = ref("default");
@@ -615,5 +615,14 @@ const resetForm = () => {
     .reset-btn {
         width: 100%;
     }
+}
+
+:deep(.el-upload-list__item-file-name) {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 175px; 
 }
 </style>

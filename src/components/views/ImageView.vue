@@ -1,36 +1,49 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onUnmounted } from "vue";
 
-// 子组件获取父组件传值
 interface Props {
     ImageInfo: any[],
+    total?: number
 }
 defineProps<Props>()
 
-const checkList = ref<any[]>([]) // 存储选中的图片ID
+const checkList = ref<any[]>([])
+
+// 防抖点击
+let clickTimer: number | null = null
+
+const toggleCheck = (id: any) => {
+  if (clickTimer) {
+    clearTimeout(clickTimer)
+  }
+  
+  clickTimer = setTimeout(() => {
+    const index = checkList.value.indexOf(id)
+    if (index > -1) {
+      checkList.value.splice(index, 1)
+    } else {
+      checkList.value.push(id)
+    }
+    clickTimer = null
+  }, 50)
+}
 
 defineExpose({
     checkList
 })
 
-// 切换选中状态的方法
-const toggleCheck = (id: any) => {
-    const index = checkList.value.indexOf(id)
-    if (index > -1) {
-        // 如果已存在，则移除
-        checkList.value.splice(index, 1)
-    } else {
-        // 如果不存在，则添加
-        checkList.value.push(id)
-    }
-}
+onUnmounted(() => {
+  if (clickTimer) {
+    clearTimeout(clickTimer)
+  }
+})
 </script>
 
 <template>
     <div>
         <div v-if="ImageInfo.length != 0">
             <el-checkbox-group v-model="checkList">
-                <el-row :gutter="12">
+                <el-row :gutter="18">
                     <el-col :span="6" v-for="item in ImageInfo" :key="item.id">
                         <div style="position: relative; margin-bottom: 20px;">
                             <el-checkbox :label="item.id" class="custom-checkbox">
@@ -43,11 +56,17 @@ const toggleCheck = (id: any) => {
                                 style="width: 100%; height: 100%; border: 1px solid #e1e8ed; border-radius: 8px;"
                                 hide-on-click-modal
                                 preview-teleported
+                                lazy
                             />
                         </div>
                     </el-col>
                 </el-row>
             </el-checkbox-group>
+            
+            <!-- 显示加载信息 -->
+            <div v-if="total && ImageInfo.length < total" style="text-align: center; padding: 10px; color: #909399;">
+                已显示 {{ ImageInfo.length }} / {{ total }} 张图片
+            </div>
         </div>
         <div v-else style="text-align: center;">
             <h3>当前选项下暂无图片</h3>
@@ -67,13 +86,11 @@ const toggleCheck = (id: any) => {
     display: none;
 }
 
-/* 选中状态的样式 */
 .custom-checkbox :deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
     background-color: #409EFF;
     border-color: #409EFF;
 }
 
-/* 图片容器悬停效果 - 增强 */
 .el-col:hover .el-image {
     border-color: #409EFF;
     box-shadow: 0 8px 25px rgba(64, 158, 255, 0.4);
@@ -82,9 +99,9 @@ const toggleCheck = (id: any) => {
 }
 
 .selected-image {
-    box-shadow: 0 0 0 3px #409EFF !important;
+    box-shadow: 0 0 0 3px #409EFF  !important;
 }
-/* 确保图片显示正常 */
+
 .el-image {
     background: #f5f5f5;
     cursor: pointer;

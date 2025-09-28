@@ -32,7 +32,6 @@
                             <template #default="scope">
                                 <el-popover effect="light" trigger="hover" placement="top" width="auto">
                                     <template #default>
-                                        <!-- <div>: {{ scope.row.name }}</div> -->
                                         <div> {{ scope.row.filename }}</div>
                                     </template>
                                     <template #reference>
@@ -80,13 +79,13 @@
 </template>
 
 <script setup lang="ts">
-import { db, loadImages, images } from '../db';
-import { loadImagesFromDatabase } from '../data/ImageInfo';
+import { db, loadImages, images } from '../../db';
+import { loadImagesFromDatabase } from '../../data/ImageInfo';
 import { ref, computed, onMounted } from "vue";
 import { Search, Delete, Upload } from "@element-plus/icons-vue";
 import zhCn from "element-plus/es/locale/lang/zh-cn";
-import { ImageType } from "../data/ImageType";
-import router from "../router";
+import { ImageType } from "../../data/ImageType";
+import router from "../../router";
 import { ElMessage } from 'element-plus';
 
 const centerDialogVisible = ref(false)
