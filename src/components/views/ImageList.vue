@@ -7,10 +7,6 @@
                         <el-button type="primary" @click="onUpload" :icon="Upload">
                             <span>上传图片</span>
                         </el-button>
-                        <el-button type="danger" @click="showDeleteDialog" :icon="Delete"
-                            :disabled="selectedImages.length === 0">
-                            <span>批量删除 ({{ selectedImages.length }})</span>
-                        </el-button>
                     </div>
                     <el-input v-model="search" placeholder="输入关键词检索" clearable class="input-with-select">
                         <template #append>
@@ -19,9 +15,8 @@
                     </el-input>
                     <el-table :data="filteredImages.slice((currentPage - 1) * pageSize, currentPage * pageSize)"
                         style="width: 100%;" :header-cell-style="{ 'text-align': 'center' }"
-                        :cell-style="{ 'text-align': 'center' }" @selection-change="handleSelectionChange" row-key="id">
-                        <el-table-column type="selection" width="55" :reserve-selection="true" />
-                        <el-table-column label="图片" prop="image" width="250" fixed="left">
+                        :cell-style="{ 'text-align': 'center' }" row-key="id" lazy>
+                        <el-table-column label="图片" prop="image" width="250">
                             <template #default="scope">
                                 <div class="image-container">
                                     <img :src="scope.row.data" alt="图片" class="adaptive-image" />
@@ -32,7 +27,8 @@
                             <template #default="scope">
                                 <el-popover effect="light" trigger="hover" placement="top" width="auto">
                                     <template #default>
-                                        <div> {{ scope.row.filename }}</div>
+                                        <div>文件名：{{ scope.row.filename }}</div>
+                                        <div>类别：{{ scope.row.type }}</div>
                                     </template>
                                     <template #reference>
                                         <el-tag size="large" effect="plain">{{ scope.row.name }}</el-tag>
@@ -40,7 +36,7 @@
                                 </el-popover>
                             </template>
                         </el-table-column>
-                        <el-table-column label="上传日期" prop="uploadedAt" width="150">
+                        <el-table-column label="上传日期" prop="uploadedAt" width="150" sortable>
                             <template #default="scope">
                                 {{ formatDate(scope.row.uploadedAt) }}
                             </template>
@@ -65,16 +61,6 @@
                 </el-tab-pane>
             </el-tabs>
         </el-card>
-
-        <el-dialog v-model="centerDialogVisible" title="警告" width="30%" center>
-            <span>确认要删除选中的 {{ selectedImages.length }} 张图片吗？此操作不可恢复。</span>
-            <template #footer>
-                <span class="dialog-footer">
-                    <el-button @click="centerDialogVisible = false">取消</el-button>
-                    <el-button type="primary" @click="confirmDeleteAll">确认</el-button>
-                </span>
-            </template>
-        </el-dialog>
     </div>
 </template>
 
@@ -88,10 +74,8 @@ import { ImageType } from "../../data/ImageType";
 import router from "../../router";
 import { ElMessage } from 'element-plus';
 
-const centerDialogVisible = ref(false)
 const activeTab = ref("0");
 const search = ref("");
-const selectedImages = ref<any[]>([]);
 
 const formatDate = (date: Date | string | number) => {
     const d = new Date(date);
@@ -99,10 +83,6 @@ const formatDate = (date: Date | string | number) => {
     const month = d.getMonth() + 1;
     const day = d.getDate();
     return `${year}-${month}-${day}`;
-};
-
-const handleSelectionChange = (selection: any[]) => {
-    selectedImages.value = selection;
 };
 
 const handleDelete = async (id: number) => {
@@ -114,29 +94,6 @@ const handleDelete = async (id: number) => {
     } catch (error) {
         console.error('删除图片失败:', error);
         ElMessage.error("删除失败！");
-    }
-};
-
-const showDeleteDialog = () => {
-    if (selectedImages.value.length === 0) {
-        ElMessage.warning("请先选择要删除的图片！");
-        return;
-    }
-    centerDialogVisible.value = true;
-};
-
-const confirmDeleteAll = async () => {
-    try {
-        const deletePromises = selectedImages.value.map(image => db.images.delete(image.id));
-        await Promise.all(deletePromises);
-        await loadImages();
-        await loadImagesFromDatabase();
-        selectedImages.value = [];
-        centerDialogVisible.value = false;
-        ElMessage.success(`成功删除 ${deletePromises.length} 张图片！`);
-    } catch (error) {
-        console.error('批量删除图片失败:', error);
-        ElMessage.error("批量删除失败！");
     }
 };
 
@@ -179,7 +136,6 @@ const onUpload = () => router.push({ name: "UploadImage", params: { entryMethod:
 const tabChange = () => {
     currentPage.value = 1;
     search.value = "";
-    selectedImages.value = [];
 }
 
 onMounted(() => loadImages());
@@ -187,8 +143,8 @@ onMounted(() => loadImages());
 
 <style scoped>
 .image-container {
-    width: 250px;
-    height: 150px;
+    width: auto;
+    height: auto;
     display: flex;
     align-items: center;
     justify-content: center;
