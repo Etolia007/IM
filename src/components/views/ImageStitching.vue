@@ -450,7 +450,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* 主容器布局 */
+
 .main-container {
     display: flex;
     gap: 16px;

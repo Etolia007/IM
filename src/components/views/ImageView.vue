@@ -135,5 +135,6 @@ onUnmounted(() => {
 
 :deep(.el-checkbox__inner) {
   border-radius: 50%;
+  top:-9px;
 }
 </style>
