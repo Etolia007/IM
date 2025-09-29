@@ -3,7 +3,7 @@
         <el-card shadow="hover" class="manager-card">
             <el-tabs type="border-card" @tab-change="tabChange" v-model="activeTab" class="responsive-tabs">
                 <el-tab-pane v-for="(state, index) in ImageType" :key="index" :label="state" :name="index.toString()">
-                    <!-- 操作栏 -->
+
                     <div class="action-bar">
                         <el-button type="primary" @click="onUpload" :icon="Upload" class="upload-btn">
                             <span class="btn-text">上传图片</span>
@@ -15,7 +15,6 @@
                         </el-input>
                     </div>
 
-                    <!-- PC端表格视图 -->
                     <div class="desktop-view">
                         <el-table :data="filteredImages.slice((currentPage - 1) * pageSize, currentPage * pageSize)"
                             style="width: 100%;" :header-cell-style="{ 'text-align': 'center' }"
@@ -58,7 +57,6 @@
                         </el-table>
                     </div>
 
-                    <!-- 移动端卡片视图 -->
                     <div class="mobile-view">
                         <div class="image-cards">
                             <div v-for="item in filteredImages.slice((currentPage - 1) * pageSize, currentPage * pageSize)"
@@ -86,7 +84,6 @@
                         </div>
                     </div>
 
-                    <!-- 分页 -->
                     <el-config-provider :locale="zhCn">
                         <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize"
                             :page-sizes="pageSizes" :small="small" :disabled="disabled" :background="background"
@@ -190,7 +187,6 @@ onMounted(() => loadImages());
     border-radius: 8px;
 }
 
-/* 操作栏响应式 */
 .action-bar {
     display: flex;
     gap: 12px;
@@ -212,7 +208,6 @@ onMounted(() => loadImages());
     margin-left: 4px;
 }
 
-/* 桌面视图 */
 .desktop-view {
     display: block;
 }
@@ -221,7 +216,6 @@ onMounted(() => loadImages());
     display: none;
 }
 
-/* 移动端卡片视图 */
 .image-cards {
     display: grid;
     gap: 12px;
@@ -280,13 +274,12 @@ onMounted(() => loadImages());
     text-align: center;
 }
 
-/* 响应式分页 */
 .responsive-pagination {
     margin-top: 16px;
-    overflow-x: auto;
+    display: flex;
+    justify-content: center;
 }
 
-/* 图片容器 */
 .image-container {
     width: auto;
     height: auto;
@@ -304,7 +297,6 @@ onMounted(() => loadImages());
     object-fit: contain;
 }
 
-/* 标签样式 */
 .responsive-tabs :deep(.el-tabs__nav-wrap) {
     padding: 0 8px;
 }
@@ -314,7 +306,6 @@ onMounted(() => loadImages());
     font-size: 14px;
 }
 
-/* 移动端样式 */
 @media (max-width: 768px) {
     .image-manager {
         padding: 4px;
@@ -334,7 +325,6 @@ onMounted(() => loadImages());
         display: inline;
     }
 
-    /* 移动端显示卡片，隐藏表格 */
     .desktop-view {
         display: none;
     }
@@ -351,15 +341,31 @@ onMounted(() => loadImages());
         height: 180px;
     }
 
-    /* 移动端分页优化 */
+    .responsive-pagination {
+        padding: 0 8px;
+    }
+    
     .responsive-pagination :deep(.el-pagination) {
+        display: flex;
         justify-content: center;
         flex-wrap: wrap;
+        gap: 8px;
     }
-
+    
+    .responsive-pagination :deep(.el-pagination__total),
     .responsive-pagination :deep(.el-pagination__sizes),
     .responsive-pagination :deep(.el-pagination__jump) {
         margin-top: 8px;
+        flex: 1;
+        text-align: center;
+        justify-content: center;
+    }
+    
+    .responsive-pagination :deep(.btn-prev),
+    .responsive-pagination :deep(.btn-next),
+    .responsive-pagination :deep(.el-pager) {
+        display: flex;
+        justify-content: center;
     }
 
     /* 标签优化 */
@@ -387,8 +393,18 @@ onMounted(() => loadImages());
         padding: 8px;
     }
 
+    .responsive-pagination :deep(.el-pagination) {
+        flex-direction: column;
+        align-items: center;
+    }
+    
     .responsive-pagination :deep(.el-pagination__total) {
-        display: none;
+        order: -1;
+        margin-bottom: 8px;
+    }
+    
+    .responsive-pagination :deep(.el-pagination__sizes) {
+        margin: 8px 0;
     }
 }
 
