@@ -337,39 +337,40 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div style="display: flex;">
-        <div style="flex: 4.75;">
-            <el-card shadow="hover" gradient="true" class="flex-card">
+    <div class="main-container">
+        <!-- 左侧图片选择区域 -->
+        <div class="left-panel">
+            <el-card shadow="hover" class="flex-card">
                 <template #header>
                     <div class="card-header">
-                        <el-select v-model="value" placeholder="请选择" size="large" @change="clickTab">
-                            <el-option v-for="item in options" :key="item.value" :label="item.label"
-                                :value="item.value" />
+                        <el-select v-model="value" placeholder="请选择" size="large" @change="clickTab" class="category-select">
+                            <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
                         </el-select>
-                        <el-button link type="text">当前分类下共有<span style="font-weight: bold;color: #409EFF;">&nbsp;{{
-                            currentCategoryImages.length }}&nbsp;</span>张图片</el-button>
+                        <el-button link type="text" class="image-count">
+                            当前分类下共有<span class="count-number">{{ currentCategoryImages.length }}</span>张图片
+                        </el-button>
                     </div>
                     <div>
                         <el-divider>
-                            <el-icon>
-                                <Star />
-                            </el-icon></el-divider>
+                            <el-icon><Star /></el-icon>
+                        </el-divider>
                     </div>
-                    <div class="text">
-                        <el-link :underline="false">温馨提示：点击图片即可选中，当前共选择
-                            <el-link type="primary" :underline="false">
-                                <span style="font-weight: bold;">&nbsp;{{ List?.checkList?.length
-                                }}&nbsp;</span> </el-link>
+                    <div class="action-bar">
+                        <el-link :underline="false" class="hint-text">
+                            温馨提示：点击图片即可选中，当前共选择
+                            <el-link type="primary" :underline="false" class="selected-count">
+                                {{ List?.checkList?.length || 0 }}
+                            </el-link>
                             张图片。
                         </el-link>
                         <div class="button-group">
-                            <el-button type="primary" round plain @click="selectAll">全选</el-button>
-                            <el-button type="success" round plain @click="invertSelection">反选</el-button>
-                            <el-button type="danger" round plain @click="clearSelection">清空</el-button>
+                            <el-button type="primary" round plain @click="selectAll" size="small">全选</el-button>
+                            <el-button type="success" round plain @click="invertSelection" size="small">反选</el-button>
+                            <el-button type="danger" round plain @click="clearSelection" size="small">清空</el-button>
                         </div>
                     </div>
                 </template>
-                <div class="table-container1" @scroll="onScroll">
+                <div class="image-grid-container" @scroll="onScroll">
                     <ImageView ref="List" :ImageInfo="paginatedImages" :total="currentCategoryImages.length" />
                     <div v-if="loading" class="loading-more">
                         <el-icon class="is-loading"><Loading /></el-icon>
@@ -382,25 +383,26 @@ onUnmounted(() => {
                 </div>
             </el-card>
         </div>
-        <div style="flex: 0.1;"></div>
-        <div style="flex: 2">
-            <el-card shadow="hover" class="flex-card">
+
+        <!-- 右侧已选图片区域 -->
+        <div class="right-panel">
+            <el-card shadow="hover" class="flex-card selected-panel">
                 <template #header>
-                    <div class="card-header">
-                        <span style="font-weight: bold;">已选择的图片</span>
+                    <div class="panel-header">
+                        <span class="panel-title">已选择的图片</span>
                     </div>
-                    <div style="font-size: small;color: #909399; text-align: left; ">拖拽图片可调整顺序,点击缩略图可查看预览</div>
+                    <div class="panel-subtitle">拖拽图片可调整顺序,点击缩略图可查看预览</div>
                 </template>
-                <div class="table-container2">
-                    <div v-if="List?.checkList?.length === 0">
+                <div class="selected-list-container">
+                    <div v-if="List?.checkList?.length === 0" class="empty-state">
                         <h3>当前未选择任何图片</h3>
                     </div>
-                    <div v-else class="item">
+                    <div v-else class="selected-items">
                         <draggable @change="onListChange" :list="List?.checkList" ghost-class="ghost"
                             chosen-class="chosenClass" animation="300" @start="drag=true" @end="drag=false"
                             item-key="id">
                             <template #item="{ element, index }" :key="element">
-                                <div class="draggable-item">
+                                <div class="selected-item">
                                     <li>
                                         <span class="drag-handle">
                                             <el-image class="thumbnail" :src="getImageUrl(element)"
@@ -408,10 +410,10 @@ onUnmounted(() => {
                                                 hide-on-click-modal preview-teleported lazy />
                                         </span>
                                         <span class="image-name">
-                                                {{ getImageName(element) }}
+                                            {{ getImageName(element) }}
                                         </span>
                                         <el-button @click="clickDelete(index)" text type="danger" :icon="CloseBold"
-                                            circle />
+                                            circle size="small" class="delete-btn" />
                                     </li>
                                 </div>
                             </template>
@@ -419,40 +421,228 @@ onUnmounted(() => {
                     </div>
                 </div>
                 <template #footer>
-                    <el-row>
-                        <el-col :span="14">
-                            <el-select v-model="stitchingValue" clearable placeholder="请选择拼接方式">
-                                <el-option v-for="item in StitchingType" :key="item.name" :label="item.name"
-                                    :value="item.name" />
-                            </el-select>
-                        </el-col>
-                        <el-col :span="2">
-                            <div />
-                        </el-col>
-                        <el-col :span="8"><el-button :disabled="List?.checkList.length == 0" @click="onStitching"
-                                type="primary" round>生成拼接图</el-button></el-col>
-                    </el-row>
+                    <div class="stitching-controls">
+                        <el-select v-model="stitchingValue" clearable placeholder="请选择拼接方式" class="stitching-select">
+                            <el-option v-for="item in StitchingType" :key="item.name" :label="item.name" :value="item.name" />
+                        </el-select>
+                        <el-button :disabled="List?.checkList.length == 0" @click="onStitching"
+                            type="primary" round class="generate-btn">生成拼接图</el-button>
+                    </div>
                 </template>
             </el-card>
         </div>
 
+        <!-- 拼接结果对话框 -->
         <div>
-            <el-dialog v-model="dialogVisible" title="拼接结果" width="75%" draggable>
+            <el-dialog v-model="dialogVisible" title="拼接结果" width="75%" draggable class="result-dialog">
                 <el-divider />
-                <ul class="infinite-list2" style="overflow: auto">
+                <div class="result-container">
                     <canvas id="canvas" ref="canvas" width="1" height="1" style="display: none;"></canvas>
-                    <el-image v-if="stitchedImageUrl" :src="stitchedImageUrl" fit="contain" style="max-width: 100%;"
+                    <el-image v-if="stitchedImageUrl" :src="stitchedImageUrl" fit="contain" class="result-image"
                         :preview-src-list="[stitchedImageUrl]" hide-on-click-modal preview-teleported lazy />
-                    <div v-else style="text-align: center; padding: 20px;">
+                    <div v-else class="no-result">
                         <p>请先生成拼接图</p>
                     </div>
-                </ul>
+                </div>
             </el-dialog>
         </div>
     </div>
 </template>
 
 <style scoped>
+/* 主容器布局 */
+.main-container {
+    display: flex;
+    gap: 16px;
+    min-height: 600px;
+}
+
+.left-panel {
+    flex: 4.75;
+    min-width: 0; /* 防止flex元素溢出 */
+}
+
+.right-panel {
+    flex: 2;
+    min-width: 0;
+}
+
+/* 移动端布局 */
+@media (max-width: 768px) {
+    .main-container {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .left-panel,
+    .right-panel {
+        flex: none;
+        width: 100%;
+    }
+}
+
+/* 卡片基础样式 */
+.flex-card {
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    border-left: 3px solid #409EFF;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 头部区域响应式 */
+.card-header {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 0 0 12px 0;
+}
+
+@media (min-width: 769px) {
+    .card-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+}
+
+.category-select {
+    width: 100%;
+}
+
+@media (min-width: 769px) {
+    .category-select {
+        width: 200px;
+    }
+}
+
+.image-count {
+    white-space: nowrap;
+}
+
+.count-number {
+    font-weight: bold;
+    color: #409EFF;
+    margin: 0 4px;
+}
+
+/* 操作栏 */
+.action-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+@media (min-width: 480px) {
+    .action-bar {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+}
+
+.hint-text {
+    font-size: 14px;
+}
+
+.selected-count {
+    font-weight: bold;
+    margin: 0 4px;
+}
+
+.button-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+    .button-group {
+        justify-content: center;
+    }
+}
+
+/* 图片网格容器 */
+.image-grid-container {
+    height: 400px;
+    overflow-y: auto;
+    padding: 4px;
+}
+
+@media (max-width: 768px) {
+    .image-grid-container {
+        height: 350px;
+    }
+}
+
+/* 右侧面板样式 */
+.panel-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.panel-title {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.panel-subtitle {
+    font-size: 12px;
+    color: #909399;
+    text-align: left;
+}
+
+.selected-list-container {
+    height: 300px;
+    overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+    .selected-list-container {
+        height: 250px;
+    }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #909399;
+}
+
+.empty-state h3 {
+    margin: 0;
+    font-weight: normal;
+}
+
+/* 已选图片项 */
+.selected-item {
+    background: white;
+    border: 1px solid #e1e8ed;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    cursor: grab;
+    transition: all 0.2s ease;
+}
+
+.selected-item:hover {
+    border-color: #3498db;
+    transform: translateY(-1px);
+}
+
+.selected-item li {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    color: #2c3e50;
+    font-size: 14px;
+}
+
 .thumbnail {
     width: 30px;
     height: 30px;
@@ -461,210 +651,134 @@ onUnmounted(() => {
     margin-right: 8px;
 }
 
-canvas {
-    border: 1px solid;
-}
-
-.el-card__footer {
-    padding: 15px 20px;
-    background: #f8f9fa;
-    border-top: 1px solid #e1e8ed;
-    border-radius: 0 0 12px 12px;
-}
-
-.el-card__footer h1 {
-    text-align: center;
-    color: #7f8c8d;
-    font-size: 1.1rem;
-    font-weight: 500;
-}
-
-@media (max-width: 768px) {
-    .container {
-        max-width: 100%;
-    }
-
-    .card-header {
-        padding: 12px 15px;
-    }
-
-    .table-container1 {
-        padding: 15px;
-    }
-}
-
-.chosenClass {
-    background: #e3f2fd;
-    transform: rotate(2deg);
-}
-
-.ghost {
-    opacity: 0.6;
-    background: #f8f9fa;
-    border: 2px dashed #3498db;
-}
-
-.draggable-item {
-    background: white;
-    border: 1px solid #e1e8ed;
-    border-radius: 8px;
-    margin-bottom: 10px;
-    padding: 12px 15px;
-    display: flex;
-    align-items: center;
-    cursor: grab;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
-}
-
-.draggable-item:hover {
-    border-color: #3498db;
-    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
-    transform: translateY(-2px);
-}
-
-.draggable-item:active {
-    cursor: grabbing;
-}
-
-.draggable-item li {
-    list-style: none;
-    display: flex;
-    align-items: center;
-    width: 100%;
-    color: #2c3e50;
-    font-weight: 500;
-}
-
-.drag-handle {
-    margin-right: 12px;
-    font-size: 1.4rem;
-    color: #7f8c8d;
-    cursor: move;
-}
-
 .image-name {
     flex: 1;
-    font-size: 1rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    min-width: 0;
-    max-width: 150px;
+    margin: 0 8px;
+    font-size: 13px;
 }
 
-@media (max-width: 768px) {
-    .image-name {
-        max-width: 100px;
-        font-size: 0.9rem;
-    }
+.delete-btn {
+    flex-shrink: 0;
 }
 
 @media (max-width: 480px) {
     .image-name {
-        max-width: 80px;
-        font-size: 0.8rem;
+        max-width: 120px;
+        font-size: 12px;
+    }
+    
+    .selected-item {
+        padding: 6px 8px;
     }
 }
 
-.draggable-item li {
-    list-style: none;
+/* 拼接控制区域 */
+.stitching-controls {
     display: flex;
+    gap: 12px;
     align-items: center;
-    width: 100%;
-    color: #2c3e50;
-    font-weight: 500;
-    min-width: 0;
-    overflow: hidden;
 }
 
-.flex-card {
-    border-radius: 10px;
-    display: flex;
-    flex-direction: column;
+.stitching-select {
     flex: 1;
-    border-left: 5px double #409EFF;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
 }
 
-.flex-card:hover {
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
-    transform: translateY(-5px);
+.generate-btn {
+    white-space: nowrap;
 }
 
-.flex-card :deep(.el-card__body) {
-    flex: 1;
-    overflow: auto;
+@media (max-width: 480px) {
+    .stitching-controls {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .stitching-select,
+    .generate-btn {
+        width: 100%;
+    }
 }
 
-.table-container2 {
-    height: 300px;
-}
-
-.card-container {
-    height: 300px;
-}
-
-.infinite-list {
-    height: 300px;
-    padding: 0;
-    margin: 0;
-    list-style: none;
-}
-
-.infinite-list2 {
-    height: 400px;
-    padding: 0;
-    margin: 0;
-    list-style: none;
-}
-
-.infinite-list .infinite-list-item {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 50px;
-    background: var(--el-color-primary-light-9);
-    margin: 10px;
-    color: var(--el-color-primary);
-}
-
-.infinite-list .infinite-list-item+.list-item {
-    margin-top: 10px;
-}
-
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 0 15px 0;
-    position: relative;
-}
-
-.text {
-    font-size: 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.item {
-    margin-bottom: 18px;
-}
-
-/* 新增样式 */
+/* 加载状态 */
 .loading-more, .load-complete {
     text-align: center;
-    padding: 10px;
+    padding: 12px;
     color: #909399;
     font-size: 14px;
 }
 
-.table-container1 {
-    padding:5px;
-    height: 300px;
-    overflow-y: auto;
-    overflow-x: hidden; /* 隐藏滚动条 */
+.loading-more .el-icon {
+    margin-right: 4px;
+}
+
+/* 对话框样式 */
+.result-dialog {
+    border-radius: 8px;
+}
+
+@media (max-width: 768px) {
+    .result-dialog {
+        width: 95% !important;
+        margin: 10px auto;
+    }
+}
+
+.result-container {
+    text-align: center;
+}
+
+.result-image {
+    max-width: 100%;
+    max-height: 60vh;
+    border-radius: 4px;
+}
+
+.no-result {
+    padding: 40px 20px;
+    color: #909399;
+}
+
+/* 拖拽状态 */
+.chosenClass {
+    background: #e3f2fd;
+    transform: rotate(1deg);
+}
+
+.ghost {
+    opacity: 0.5;
+    background: #f8f9fa;
+    border: 2px dashed #3498db;
+}
+
+/* 触摸优化 */
+.el-button, .el-select, .selected-item {
+    -webkit-tap-highlight-color: transparent;
+}
+
+.el-button {
+    touch-action: manipulation;
+}
+
+/* 超小屏幕优化 */
+@media (max-width: 360px) {
+    .el-card__header {
+        padding: 12px;
+    }
+    
+    .el-divider {
+        margin: 12px 0;
+    }
+    
+    .el-button {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+    
+    .panel-title {
+        font-size: 14px;
+    }
 }
 </style>

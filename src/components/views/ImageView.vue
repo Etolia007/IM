@@ -43,9 +43,9 @@ onUnmounted(() => {
     <div>
         <div v-if="ImageInfo.length != 0">
             <el-checkbox-group v-model="checkList">
-                <el-row :gutter="18">
-                    <el-col :span="6" v-for="item in ImageInfo" :key="item.id">
-                        <div style="position: relative; margin-bottom: 20px;">
+                <el-row :gutter="[12, 12]">
+                    <el-col :xs="12" :sm="8" :md="6" v-for="item in ImageInfo" :key="item.id">
+                        <div class="image-item">
                             <el-checkbox :label="item.id" class="custom-checkbox">
                             </el-checkbox>
                             <el-image 
@@ -53,7 +53,7 @@ onUnmounted(() => {
                                 :src="item.data" 
                                 fit="contain"
                                 :class="{ 'selected-image': checkList.includes(item.id) }"
-                                style="width: 100%; height: 100%; border: 1px solid #e1e8ed; border-radius: 8px;"
+                                class="image-content"
                                 hide-on-click-modal
                                 preview-teleported
                                 lazy
@@ -63,7 +63,6 @@ onUnmounted(() => {
                 </el-row>
             </el-checkbox-group>
             
-            <!-- 显示加载信息 -->
             <div v-if="total && ImageInfo.length < total" style="text-align: center; padding: 10px; color: #909399;">
                 已显示 {{ ImageInfo.length }} / {{ total }} 张图片
             </div>
@@ -75,10 +74,25 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.image-item {
+    position: relative; 
+    margin-bottom: 12px;
+}
+
+.image-content {
+    width: 100%; 
+    height: 100%; 
+    border: 1px solid #e1e8ed; 
+    border-radius: 8px;
+    background: #f5f5f5;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
 .custom-checkbox {
     position: absolute;
-    top: -3px;
-    left: 5px;
+    top: 8px;
+    left: 8px;
     z-index: 10;
 }
 
@@ -91,7 +105,24 @@ onUnmounted(() => {
     border-color: #409EFF;
 }
 
-.el-col:hover .el-image {
+/* 移动端优化 */
+@media (max-width: 768px) {
+    .image-item {
+        margin-bottom: 8px;
+    }
+    
+    .custom-checkbox {
+        top: 6px;
+        left: 6px;
+    }
+    
+    .custom-checkbox :deep(.el-checkbox__inner) {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+.el-col:hover .image-content {
     border-color: #409EFF;
     box-shadow: 0 8px 25px rgba(64, 158, 255, 0.4);
     transition: all 0.3s ease;
@@ -102,11 +133,6 @@ onUnmounted(() => {
     box-shadow: 0 0 0 3px #409EFF  !important;
 }
 
-.el-image {
-    background: #f5f5f5;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
 :deep(.el-checkbox__inner) {
   border-radius: 50%;
 }

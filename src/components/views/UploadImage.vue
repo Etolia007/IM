@@ -57,8 +57,6 @@
                                         <el-button @click="resetForm" class="reset-btn" size="large">重置</el-button>
                                     </div>
                                 </div>
-
-                                <!-- 批量操作按钮 -->
                                 <div class="batch-actions" v-if="fileList.length > 0">
                                     <el-button type="danger" plain size="small" @click="clearAllFiles"
                                         :disabled="fileList.length === 0">
@@ -492,13 +490,10 @@ const resetForm = () => {
 }
 
 :deep(.el-upload-list--picture) {
-    /* border: 1px solid #e8e8e8; */
     max-height: 250px;
     overflow-y: auto;
     border-radius: 8px;
     padding: 12px;
-    /* background: #fafafa; */
-    /* box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); */
 }
 
 :deep(.el-upload-list--picture .el-upload-list__item) {
@@ -566,16 +561,30 @@ const resetForm = () => {
     background: #a8a8a8;
 }
 
-/* 响应式设计 */
-@media (max-width: 968px) {
+:deep(.el-upload-list__item-file-name) {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 175px; 
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .text {
+        font-size: 18px;
+    }
+
     .form-content {
         flex-direction: column;
-        gap: 25px;
+        gap: 20px;
     }
 
     .form-left {
         flex: none;
         width: 100%;
+        gap: 15px;
     }
 
     .form-right {
@@ -584,27 +593,64 @@ const resetForm = () => {
 
     .upload-header {
         flex-direction: column;
+        gap: 10px;
+    }
+
+    :deep(.upload-demo) {
+        min-width: 100%;
     }
 
     .action-buttons {
         width: 100%;
-        justify-content: center;
+        justify-content: stretch;
     }
 
     .upload-btn,
     .reset-btn {
         flex: 1;
+        min-width: auto;
+        padding: 10px 16px;
+        font-size: 14px;
     }
-}
 
-@media (max-width: 768px) {
     .batch-actions {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
+        gap: 8px;
     }
 
     .file-count {
         margin-left: 0;
+        text-align: center;
+    }
+
+    .upload-info {
+        padding: 10px;
+        gap: 10px;
+    }
+
+    :deep(.el-form-item__label) {
+        font-size: 14px;
+    }
+
+    :deep(.el-upload-list--picture) {
+        max-height: 200px;
+        padding: 8px;
+    }
+
+    :deep(.el-upload-list--picture .el-upload-list__item) {
+        padding: 8px;
+    }
+
+    :deep(.el-upload-list__item-file-name) {
+        max-width: 120px;
+    }
+}
+
+/* 小屏幕手机适配 */
+@media (max-width: 480px) {
+    .text {
+        font-size: 16px;
     }
 
     .action-buttons {
@@ -615,14 +661,15 @@ const resetForm = () => {
     .reset-btn {
         width: 100%;
     }
-}
 
-:deep(.el-upload-list__item-file-name) {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 175px; 
+    :deep(.el-upload-list__item-file-name) {
+        max-width: 80px;
+        font-size: 12px;
+    }
+
+    :deep(.el-upload-list--picture .el-upload-list__item-thumbnail) {
+        width: 30px;
+        height: 30px;
+    }
 }
 </style>
