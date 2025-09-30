@@ -1,68 +1,92 @@
 <template>
     <div class="image-manager">
         <el-card shadow="hover" class="manager-card">
-            <el-tabs type="border-card" @tab-change="tabChange" v-model="activeTab" class="responsive-tabs">
+            <el-tabs type="border-card" @tab-change="tabChange" v-model="activeTab" class="responsive-tabs" lazy>
                 <el-tab-pane v-for="(state, index) in ImageType" :key="index" :label="state" :name="index.toString()">
 
                     <div class="action-bar">
                         <el-button type="primary" @click="onUpload" :icon="Upload" class="upload-btn">
                             <span class="btn-text">上传图片</span>
                         </el-button>
-                        <el-input v-model="search" placeholder="输入关键词检索" clearable class="search-input">
+                        <el-input v-model="search" placeholder="输入关键词检索" clearable class="search-input"
+                            @input="handleSearchDebounced">
                             <template #append>
                                 <el-button :icon="Search" @click="handleSearch" />
                             </template>
                         </el-input>
                     </div>
 
+                    <!-- 桌面视图 -->
                     <div class="desktop-view">
-                        <el-table :data="filteredImages.slice((currentPage - 1) * pageSize, currentPage * pageSize)"
-                            style="width: 100%;" :header-cell-style="{ 'text-align': 'center' }"
-                            :cell-style="{ 'text-align': 'center' }" row-key="id" lazy>
-                            <el-table-column label="图片" prop="image" width="250">
+                        <el-table 
+                            :data="currentPageImages" 
+                            style="width: 100%;" 
+                            :header-cell-style="{ 'text-align': 'center' }"
+                            :cell-style="{ 'text-align': 'center'}" 
+                            row-key="id"
+                            v-loading="tableLoading"
+                            :element-loading-svg="LoadingSvg"
+                            element-loading-svg-view-box="-10, -10, 50, 50"
+                            :row-style="{ height: '160px' }">
+                            <el-table-column label="图片" prop="image" width="250" align="center">
                                 <template #default="scope">
                                     <div class="image-container">
-                                        <el-image lazy :src="scope.row.data" alt="图片" class="adaptive-image" />
+                                        <el-image 
+                                            :src="scope.row.data" 
+                                            alt="图片" 
+                                            class="adaptive-image"
+                                            loading="lazy"
+                                            :preview-src-list="getPreviewSrcList(scope.$index)"
+                                            hide-on-click-modal
+                                            preview-teleported
+                                        />
                                     </div>
                                 </template>
                             </el-table-column>
-                            <el-table-column label="名称" prop="name" width="250">
+                            <el-table-column label="名称" prop="name" width="250" show-overflow-tooltip align="center">
                                 <template #default="scope">
-                                    <el-popover effect="light" trigger="hover" placement="top" width="auto">
-                                        <template #default>
-                                            <div>文件名：{{ scope.row.filename }}</div>
-                                            <div>类别：{{ scope.row.type }}</div>
-                                        </template>
-                                        <template #reference>
-                                            <el-tag size="large" effect="plain">{{ scope.row.name }}</el-tag>
-                                        </template>
-                                    </el-popover>
+                                    <div class="name-cell">
+                                        <el-tag size="large" effect="plain">{{ scope.row.name }}</el-tag>
+                                    </div>
                                 </template>
                             </el-table-column>
-                            <el-table-column label="上传日期" prop="uploadedAt" width="150" sortable>
+                            <el-table-column label="上传日期" prop="uploadedAt" width="150" sortable align="center">
                                 <template #default="scope">
-                                    {{ formatDate(scope.row.uploadedAt) }}
+                                    <div class="date-cell">
+                                        {{ formatDate(scope.row.uploadedAt) }}
+                                    </div>
                                 </template>
                             </el-table-column>
-                            <el-table-column label="操作" fixed="right" width="150">
+                            <el-table-column label="操作" fixed="right" width="150" align="center">
                                 <template #default="scope">
-                                    <el-popconfirm title="确认要删除该图片吗？" confirm-button-text="确定" cancel-button-text="取消"
-                                        @confirm="handleDelete(scope.row.id)">
-                                        <template #reference>
-                                            <el-button type="danger" :icon="Delete" circle />
-                                        </template>
-                                    </el-popconfirm>
+                                    <div class="action-cell">
+                                        <el-popconfirm title="确认要删除该图片吗？" confirm-button-text="确定" cancel-button-text="取消"
+                                            @confirm="handleDelete(scope.row.id)">
+                                            <template #reference>
+                                                <el-button type="danger" :icon="Delete" circle />
+                                            </template>
+                                        </el-popconfirm>
+                                    </div>
                                 </template>
                             </el-table-column>
                         </el-table>
                     </div>
 
+                    <!-- 移动端视图 -->
                     <div class="mobile-view">
                         <div class="image-cards">
-                            <div v-for="item in filteredImages.slice((currentPage - 1) * pageSize, currentPage * pageSize)"
-                                :key="item.id" class="image-card">
+                            <div v-for="(item, index) in currentPageImages" :key="item.id" class="image-card">
                                 <div class="card-image">
-                                    <el-image lazy :src="item.data" alt="图片" fit="contain" class="mobile-image" />
+                                    <el-image 
+                                        :src="item.data" 
+                                        alt="图片" 
+                                        fit="contain" 
+                                        class="mobile-image"
+                                        loading="lazy"
+                                        :preview-src-list="getPreviewSrcList(index)"
+                                        hide-on-click-modal
+                                        preview-teleported
+                                    />
                                 </div>
                                 <div class="card-content">
                                     <div class="card-info">
@@ -84,11 +108,19 @@
                         </div>
                     </div>
 
+                    <!-- 分页组件 -->
                     <el-config-provider :locale="zhCn">
-                        <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize"
-                            :page-sizes="pageSizes" :small="small" :disabled="disabled" :background="background"
-                            layout="total, sizes, prev, pager, next, jumper" :total="filteredImages.length"
-                            @size-change="handleSizeChange" @current-change="handleCurrentChange"
+                        <el-pagination 
+                            v-model:current-page="currentPage" 
+                            v-model:page-size="pageSize"
+                            :page-sizes="pageSizes" 
+                            :small="small" 
+                            :disabled="disabled" 
+                            :background="background"
+                            layout="total, sizes, prev, pager, next, jumper" 
+                            :total="filteredImages.length"
+                            @size-change="handleSizeChange" 
+                            @current-change="handleCurrentChange"
                             class="responsive-pagination" />
                     </el-config-provider>
                 </el-tab-pane>
@@ -100,15 +132,54 @@
 <script setup lang="ts">
 import { db, loadImages, images } from '../../db';
 import { loadImagesFromDatabase } from '../../data/ImageInfo';
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { Search, Delete, Upload } from "@element-plus/icons-vue";
 import zhCn from "element-plus/es/locale/lang/zh-cn";
 import { ImageType } from "../../data/ImageType";
 import router from "../../router";
 import { ElMessage } from 'element-plus';
+import { debounce } from 'lodash-es';
+
+// SVG加载动画
+const LoadingSvg = `
+  <path class="path" d="
+    M 30 15
+    L 28 17
+    M 25.61 25.61
+    A 15 15, 0, 0, 1, 15 30
+    A 15 15, 0, 1, 1, 27.99 7.5
+    L 15 15
+  " style="stroke-width: 4px; fill: rgba(0, 0, 0, 0)"/>
+`;
 
 const activeTab = ref("0");
 const search = ref("");
+const tableLoading = ref(false);
+
+// 响应式判断
+const isMobile = ref(window.innerWidth <= 768);
+const updateIsMobile = () => {
+    isMobile.value = window.innerWidth <= 768;
+};
+
+// 分页相关
+const currentPage = ref(1);
+const pageSize = ref(15);
+const small = ref(false);
+const background = ref(true);
+const disabled = ref(false);
+
+// 当前页数据
+const currentPageImages = computed(() => {
+    const start = (currentPage.value - 1) * pageSize.value;
+    const end = start + pageSize.value;
+    return filteredImages.value.slice(start, end);
+});
+
+// 防抖搜索
+const handleSearchDebounced = debounce(() => {
+    currentPage.value = 1;
+}, 300);
 
 const formatDate = (date: Date | string | number) => {
     const d = new Date(date);
@@ -124,6 +195,7 @@ const handleDelete = async (id: number | undefined) => {
         return;
     }
     try {
+        tableLoading.value = true;
         await db.images.delete(id);
         await loadImages();
         await loadImagesFromDatabase();
@@ -131,6 +203,8 @@ const handleDelete = async (id: number | undefined) => {
     } catch (error) {
         console.error('删除图片失败:', error);
         ElMessage.error("删除失败！");
+    } finally {
+        tableLoading.value = false;
     }
 };
 
@@ -141,6 +215,7 @@ const getImageData = (tabIndex: string) => {
     return images.value.filter(image => image.type === typeName);
 };
 
+// 使用计算属性缓存过滤结果
 const filteredImages = computed(() => {
     const tabImages = getImageData(activeTab.value);
     if (!search.value.trim()) return tabImages;
@@ -148,37 +223,60 @@ const filteredImages = computed(() => {
     return tabImages.filter(image => image.name?.toLowerCase().includes(searchTerm));
 });
 
+// 图片预览列表（按需生成）
+const getPreviewSrcList = (index: number) => {
+    return currentPageImages.value.slice(index).map(item => item.data);
+};
+
 const pageSizes = computed(() => {
     const total = filteredImages.value.length;
-    const baseSizes = [5, 15, 30];
-    if (total > 30) return [...new Set([...baseSizes, total])].sort((a, b) => a - b);
+    const baseSizes = [5, 15, 30, 50];
+    if (total > 50) return [...new Set([...baseSizes, total])].sort((a, b) => a - b);
     return baseSizes;
 });
 
-const handleSearch = () => currentPage.value = 1;
+const handleSearch = () => {
+    currentPage.value = 1;
+};
 
-const small = ref(false);
-const background = ref(false);
-const disabled = ref(false);
-const currentPage = ref(1);
-const pageSize = ref(15);
+const handleCurrentChange = (val: number) => {
+    currentPage.value = val;
+    // 滚动到顶部
+    const container = document.querySelector('.image-manager');
+    if (container) {
+        container.scrollIntoView({ behavior: 'smooth' });
+    }
+};
 
-const handleCurrentChange = (val: number) => currentPage.value = val;
 const handleSizeChange = (val: number) => {
     pageSize.value = val;
     currentPage.value = 1;
 };
 
 const onUpload = () => router.push({ name: "UploadImage", params: { entryMethod: "Upload" } });
+
 const tabChange = () => {
     currentPage.value = 1;
     search.value = "";
-}
+};
 
-onMounted(() => loadImages());
+// 监听窗口大小变化
+onMounted(() => {
+    loadImages();
+    window.addEventListener('resize', updateIsMobile);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('resize', updateIsMobile);
+    handleSearchDebounced.cancel();
+});
 </script>
 
 <style scoped>
+/* 解决因show-overflow-tooltip导致的不居中 */
+:deep(.el-table tr .el-table__cell .cell){
+    width: 100% !important;
+}
 .image-manager {
     padding: 8px;
 }
@@ -280,13 +378,15 @@ onMounted(() => loadImages());
     justify-content: center;
 }
 
+/* 修复表格对齐问题 */
 .image-container {
-    width: auto;
-    height: auto;
+    width: 100%;
+    height: 140px;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    margin: 0 auto;
 }
 
 .adaptive-image {
@@ -295,6 +395,38 @@ onMounted(() => loadImages());
     width: auto;
     height: auto;
     object-fit: contain;
+}
+
+.name-cell,
+.date-cell,
+.action-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 140px;
+}
+
+.name-cell .el-tag {
+    margin: 0;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 表格行高统一 */
+:deep(.el-table .el-table__cell) {
+    padding: 8px 0;
+    vertical-align: middle;
+}
+
+:deep(.el-table .el-table__row) {
+    height: 160px;
+}
+
+:deep(.el-table .el-table__body tr:hover > td) {
+    background-color: #f5f7fa;
 }
 
 .responsive-tabs :deep(.el-tabs__nav-wrap) {
@@ -306,6 +438,7 @@ onMounted(() => loadImages());
     font-size: 14px;
 }
 
+/* 移动端优化 */
 @media (max-width: 768px) {
     .image-manager {
         padding: 4px;
@@ -368,7 +501,6 @@ onMounted(() => loadImages());
         justify-content: center;
     }
 
-    /* 标签优化 */
     .responsive-tabs :deep(.el-tabs__item) {
         padding: 0 8px;
         font-size: 12px;
@@ -421,5 +553,15 @@ onMounted(() => loadImages());
     :deep(.el-card__body) {
         padding: 0px;
     }
+}
+
+/* 加载动画 */
+:deep(.el-loading-mask) {
+    background-color: rgba(255, 255, 255, 0.8);
+}
+
+:deep(.el-loading-spinner .path) {
+    stroke: #409EFF;
+    stroke-width: 4px;
 }
 </style>

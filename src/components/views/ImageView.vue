@@ -43,7 +43,7 @@ onUnmounted(() => {
     <div>
         <div v-if="ImageInfo.length != 0">
             <el-checkbox-group v-model="checkList">
-                <el-row :gutter="[12, 12]">
+                <el-row :gutter="[20, 20]">
                     <el-col :xs="12" :sm="8" :md="6" v-for="item in ImageInfo" :key="item.id">
                         <div class="image-item">
                             <el-checkbox :label="item.id" class="custom-checkbox">
@@ -76,7 +76,8 @@ onUnmounted(() => {
 <style scoped>
 .image-item {
     position: relative; 
-    margin-bottom: 12px;
+    margin-bottom: 16px;
+    margin-right: 16px;
 }
 
 .image-content {
@@ -108,7 +109,7 @@ onUnmounted(() => {
 /* 移动端优化 */
 @media (max-width: 768px) {
     .image-item {
-        margin-bottom: 8px;
+        margin-bottom: 12px;
     }
     
     .custom-checkbox {
